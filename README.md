@@ -1,6 +1,8 @@
 # POMA CLI
 
-CLI for the POMA AI public API (v2).
+CLI for the POMA AI API.
+
+Supports PrimeCut Pro and PrimeCut Eco.
 
 ## Install
 
