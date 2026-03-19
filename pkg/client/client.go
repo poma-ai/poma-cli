@@ -1,0 +1,259 @@
+package client
+
+import (
+	"bufio"
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+)
+
+// Client calls the POMA API v2 (public OpenAPI).
+type Client struct {
+	BaseURL string
+	Token   string
+	HTTP    *http.Client
+}
+
+// New returns a client.
+func New(baseURL, token string) *Client {
+	return &Client{
+		BaseURL: baseURL,
+		Token:   token,
+		HTTP:    &http.Client{},
+	}
+}
+
+// Do sends an HTTP request and returns the response body and error.
+// Caller must not expect body to be valid for non-2xx if err is nil; we still return body on 4xx/5xx.
+func (c *Client) Do(method, path string, body io.Reader, headers map[string]string) ([]byte, int, error) {
+	url := c.BaseURL + path
+	req, err := http.NewRequest(method, url, body)
+	if err != nil {
+		return nil, 0, err
+	}
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+	if c.Token != "" && req.Header.Get("Authorization") == "" {
+		req.Header.Set("Authorization", "Bearer "+c.Token)
+	}
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer resp.Body.Close()
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, resp.StatusCode, err
+	}
+	return data, resp.StatusCode, nil
+}
+
+// DoJSON sends a JSON request and returns body and status. If body is nil, Content-Type is not set for GET.
+func (c *Client) DoJSON(method, path string, reqBody any) ([]byte, int, error) {
+	var body io.Reader
+	headers := map[string]string{}
+	if reqBody != nil {
+		b, err := json.Marshal(reqBody)
+		if err != nil {
+			return nil, 0, err
+		}
+		body = bytes.NewReader(b)
+		headers["Content-Type"] = "application/json"
+	}
+	return c.Do(method, path, body, headers)
+}
+
+// RegisterEmail calls POST /registerEmail (no auth).
+func (c *Client) RegisterEmail(req *AccountRegisterEmailRequest) ([]byte, int, error) {
+	return c.DoJSON(http.MethodPost, "/registerEmail", req)
+}
+
+// VerifyEmail calls POST /verifyEmail (no auth). Returns token in response.
+func (c *Client) VerifyEmail(req *AccountVerifyEmailRequest) ([]byte, int, error) {
+	return c.DoJSON(http.MethodPost, "/verifyEmail", req)
+}
+
+// IngestRaw sends POST /ingest with raw file body (pro).
+func (c *Client) IngestRaw(filePath string) ([]byte, int, error) {
+	f, err := os.Open(filePath)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer f.Close()
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return nil, 0, err
+	}
+	name := filepath.Base(filePath)
+	headers := map[string]string{
+		"Content-Disposition": `attachment; filename="` + name + `"`,
+		"Content-Type":        "application/octet-stream",
+		"Content-Length":      strconv.Itoa(len(data)),
+	}
+	return c.Do(http.MethodPost, "/ingest", bytes.NewReader(data), headers)
+}
+
+// IngestEcoRaw sends POST /ingestEco with raw file body (eco).
+func (c *Client) IngestEcoRaw(filePath string) ([]byte, int, error) {
+	f, err := os.Open(filePath)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer f.Close()
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return nil, 0, err
+	}
+	name := filepath.Base(filePath)
+	headers := map[string]string{
+		"Content-Disposition": `attachment; filename="` + name + `"`,
+		"Content-Type":        "application/octet-stream",
+		"Content-Length":      strconv.Itoa(len(data)),
+	}
+	return c.Do(http.MethodPost, "/ingestEco", bytes.NewReader(data), headers)
+}
+
+// GetJobStatus returns GET /jobs/{job_id}/status.
+func (c *Client) GetJobStatus(jobID string) ([]byte, int, error) {
+	return c.Do(http.MethodGet, "/jobs/"+jobID+"/status", nil, nil)
+}
+
+// StatusStream opens the Status API SSE stream for a job (GET /jobs/{job_id} on status API).
+// statusBaseURL is the Status API base, e.g. "https://api.poma-ai.com/status/v1".
+// For each job_status event, onEvent is called with the parsed JobStatus; if onEvent returns false, streaming stops.
+// The stream ends when the job reaches a terminal state (done, failed, deleted) or the context is cancelled.
+func (c *Client) StatusStream(ctx context.Context, jobID, statusBaseURL string, onEvent func(*JobStatus) bool) error {
+	url := strings.TrimSuffix(statusBaseURL, "/") + "/jobs/" + jobID
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return err
+	}
+	if c.Token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.Token)
+	}
+	req.Header.Set("Accept", "text/event-stream")
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("status stream: HTTP %d: %s", resp.StatusCode, string(body))
+	}
+	return readSSEJobStatus(resp.Body, onEvent)
+}
+
+// readSSEJobStatus parses SSE events from r, expecting event: job_status and data: JSON JobStatus.
+func readSSEJobStatus(r io.Reader, onEvent func(*JobStatus) bool) error {
+	scanner := bufio.NewScanner(r)
+	var eventType, data string
+	for scanner.Scan() {
+		line := scanner.Text()
+		if line == "" {
+			if eventType == "job_status" && data != "" {
+				var s JobStatus
+				if err := json.Unmarshal([]byte(data), &s); err != nil {
+					eventType = ""
+					data = ""
+					continue
+				}
+				if !onEvent(&s) {
+					return nil
+				}
+				if s.Status == "done" || s.Status == "failed" || s.Status == "deleted" {
+					return nil
+				}
+			}
+			eventType = ""
+			data = ""
+			continue
+		}
+		if strings.HasPrefix(line, "event:") {
+			eventType = strings.TrimSpace(strings.TrimPrefix(line, "event:"))
+			continue
+		}
+		if strings.HasPrefix(line, "data:") {
+			data = strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+			continue
+		}
+	}
+	return scanner.Err()
+}
+
+// DownloadJob writes GET /jobs/{job_id}/download to outPath. Returns written bytes and error.
+func (c *Client) DownloadJob(jobID, outPath string) (int64, int, error) {
+	body, status, err := c.Do(http.MethodGet, "/jobs/"+jobID+"/download", nil, nil)
+	if err != nil {
+		return 0, status, err
+	}
+	if status != http.StatusOK {
+		return 0, status, fmt.Errorf("download failed: HTTP %d: %s", status, string(body))
+	}
+	if outPath == "" {
+		outPath = "bin/" + PomaArchiveName(jobID)
+	}
+	if err := os.MkdirAll(filepath.Dir(outPath), 0755); err != nil {
+		return 0, status, err
+	}
+	if err := os.WriteFile(outPath, body, 0644); err != nil {
+		return 0, status, err
+	}
+	return int64(len(body)), status, nil
+}
+
+// DeleteJob sends DELETE /jobs/{job_id}.
+func (c *Client) DeleteJob(jobID string) ([]byte, int, error) {
+	return c.Do(http.MethodDelete, "/jobs/"+jobID, nil, nil)
+}
+
+// GetMe returns GET /me.
+func (c *Client) GetMe() ([]byte, int, error) {
+	return c.Do(http.MethodGet, "/me", nil, nil)
+}
+
+// GetMyProjects returns GET /myProjects.
+func (c *Client) GetMyProjects() ([]byte, int, error) {
+	return c.Do(http.MethodGet, "/myProjects", nil, nil)
+}
+
+// GetMyUsage returns GET /myUsage.
+func (c *Client) GetMyUsage() ([]byte, int, error) {
+	return c.Do(http.MethodGet, "/myUsage", nil, nil)
+}
+
+// Health returns GET /health (no auth).
+func (c *Client) Health() ([]byte, int, error) {
+	return c.Do(http.MethodGet, "/health", nil, nil)
+}
+
+// PomaArchiveName returns the default filename for a job's POMA archive download.
+func PomaArchiveName(jobID string) string {
+	return jobID + ".poma"
+}
+
+// ParseJob parses the ingest response into Job to get job_id.
+func ParseJob(data []byte) (*Job, error) {
+	var j Job
+	if err := json.Unmarshal(data, &j); err != nil {
+		return nil, err
+	}
+	return &j, nil
+}
+
+// ParseJobStatus parses job status response.
+func ParseJobStatus(data []byte) (*JobStatus, error) {
+	var s JobStatus
+	if err := json.Unmarshal(data, &s); err != nil {
+		return nil, err
+	}
+	return &s, nil
+}
