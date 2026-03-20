@@ -10,6 +10,9 @@
 
 version: 2
 
+release:
+  replace_existing_artifacts: true
+
 before:
   hooks:
     - go mod tidy
