@@ -18,6 +18,11 @@ type AccountVerifyEmailRequest struct {
 	Code  string `json:"code"`
 }
 
+// AccountAPIKeyBody parses GET /accounts/me; other JSON fields are ignored.
+type AccountAPIKeyBody struct {
+	APIKey string `json:"api_key"`
+}
+
 // Job is the response from POST /ingest and POST /ingestEco.
 type Job struct {
 	JobID string `json:"job_id"`

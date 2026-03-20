@@ -225,6 +225,11 @@ func (c *Client) GetMe() ([]byte, int, error) {
 	return c.Do(http.MethodGet, "/me", nil, nil)
 }
 
+// GetAccountsMe returns GET /accounts/me.
+func (c *Client) GetAccountsMe() ([]byte, int, error) {
+	return c.Do(http.MethodGet, "/accounts/me", nil, nil)
+}
+
 // GetMyProjects returns GET /myProjects.
 func (c *Client) GetMyProjects() ([]byte, int, error) {
 	return c.Do(http.MethodGet, "/myProjects", nil, nil)
