@@ -54,15 +54,6 @@ go build -o poma .
 
 ## Usage
 
-- `--base-url`: API base URL (default: `https://api.poma-ai.com/v2`)
-- `--status-base-url`: Status SSE API base URL (default: `https://api.poma-ai.com/status/v1`)
-- `--token` or `POMA_API_TOKEN`: JWT for authenticated endpoints
-- `--json` *(optional)*: pass options as JSON instead of repeating flags. Value is either an inline object (must start with `{`) or a path to a `.json` file **under your current working directory**. Keys use **snake_case** (e.g. `token`, `job_id`, `file`, `output`, `base_url`). Any flag you set on the command line **overrides** the same field from `--json`.
-
-### Simple flow (api key)
-
-Prerequisite: set **`POMA_API_TOKEN`** to your long-lived **`api_key`** (JWT). Copy it from the [POMA web app](https://app.poma-ai.com) after you sign in, or run the **Full flow (incl. registration/login)** section below (`verify-email`, then `account api-key`).
-
 ```bash
 # export POMA_API_TOKEN='<paste api_key here>'
 
@@ -70,21 +61,28 @@ Prerequisite: set **`POMA_API_TOKEN`** to your long-lived **`api_key`** (JWT). C
 poma jobs ingest --file document.pdf
 # note the job_id from the output
 
-# 5. Stream status until done (or failed)
+# 5. Stream status until done (or failed). The ingest job is async.
 poma jobs status-stream --job-id <job_id>
 
 # 6. When status is done, download the result
 poma jobs download --job-id <job_id> --output result.poma
 ```
 
-### Full flow (incl. registration/login)
+**Global parameters:**
+- `--base-url`: API base URL (default: `https://api.poma-ai.com/v2`)
+- `--status-base-url`: Status SSE API base URL (default: `https://api.poma-ai.com/status/v1`)
+- `--token` or `POMA_API_TOKEN`: JWT for authenticated endpoints
+- `--json` *(optional)*: pass options as JSON instead of repeating flags. Value is either an inline object (must start with `{`) or a path to a `.json` file **under your current working directory**. Keys use **snake_case** (e.g. `token`, `job_id`, `file`, `output`, `base_url`). Any flag you set on the command line **overrides** the same field from `--json`.
 
-1. **Register** – send verification email to your address.
-2. **Verify** – use the code from the email; the CLI prints a JWT you can use for the next step.
-3. **Long-lived JWT** – with that JWT, use **`poma account api-key`** (`GET /me`; prints only `{"api_key":"…"}`) or **`poma account me`** (`GET /me`, full account JSON). The **`api_key`** value is the long-lived JWT—set `POMA_API_TOKEN` for day-to-day use (new shells, automation, etc.).
-4. **Ingest** – upload a file; the response gives a `job_id`.
-5. **Watch status** – stream job status via SSE until it reaches `done` (or `failed`).
-6. **Download** – when status is `done`, download the result.
+### Get api key
+
+**Register for free on website**
+
+- [POMA web app](https://app.poma-ai.com)
+- Copy api key
+
+
+**Register for free using cli**
 
 ```bash
 # 1. Register (no token)
@@ -96,16 +94,6 @@ export POMA_API_TOKEN='<JWT from verify output>'
 
 # 3. Long-lived JWT — GET /me, field "api_key"
 export POMA_API_TOKEN=$(poma account api-key | jq -r '.api_key')
-
-# 4. Ingest a file
-poma jobs ingest --file document.pdf
-# note the job_id from the output
-
-# 5. Stream status until done (or failed)
-poma jobs status-stream --job-id <job_id>
-
-# 6. When status is done, download the result
-poma jobs download --job-id <job_id> --output result.poma
 ```
 
 ## Project structure
