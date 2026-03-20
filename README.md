@@ -1,3 +1,9 @@
+![POMA AI Logo](https://raw.githubusercontent.com/poma-ai/.github/main/assets/POMA_AI_Logo_Pink.svg)
+
+[![](https://img.shields.io/badge/patented%20at%20USPTO-8A2BE2)]()
+[![](https://img.shields.io/badge/patented%20at%20DPA-8A2BE2)]()
+[![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg)](LICENSE)
+
 # POMA CLI
 
 CLI for the POMA AI API.
