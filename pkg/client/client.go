@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -92,7 +93,7 @@ func (c *Client) IngestRaw(filePath string) ([]byte, int, error) {
 	if err != nil {
 		return nil, 0, err
 	}
-	name := filepath.Base(filePath)
+	name := sanitizeContentDispositionFilename(filepath.Base(filePath))
 	headers := map[string]string{
 		"Content-Disposition": `attachment; filename="` + name + `"`,
 		"Content-Type":        "application/octet-stream",
@@ -112,7 +113,7 @@ func (c *Client) IngestEcoRaw(filePath string) ([]byte, int, error) {
 	if err != nil {
 		return nil, 0, err
 	}
-	name := filepath.Base(filePath)
+	name := sanitizeContentDispositionFilename(filepath.Base(filePath))
 	headers := map[string]string{
 		"Content-Disposition": `attachment; filename="` + name + `"`,
 		"Content-Type":        "application/octet-stream",
@@ -123,7 +124,8 @@ func (c *Client) IngestEcoRaw(filePath string) ([]byte, int, error) {
 
 // GetJobStatus returns GET /jobs/{job_id}/status.
 func (c *Client) GetJobStatus(jobID string) ([]byte, int, error) {
-	return c.Do(http.MethodGet, "/jobs/"+jobID+"/status", nil, nil)
+	seg := EncodePathSegment(jobID)
+	return c.Do(http.MethodGet, "/jobs/"+seg+"/status", nil, nil)
 }
 
 // StatusStream opens the Status API SSE stream for a job (GET /jobs/{job_id} on status API).
@@ -131,8 +133,8 @@ func (c *Client) GetJobStatus(jobID string) ([]byte, int, error) {
 // For each job_status event, onEvent is called with the parsed JobStatus; if onEvent returns false, streaming stops.
 // The stream ends when the job reaches a terminal state (done, failed, deleted) or the context is cancelled.
 func (c *Client) StatusStream(ctx context.Context, jobID, statusBaseURL string, onEvent func(*JobStatus) bool) error {
-	url := strings.TrimSuffix(statusBaseURL, "/") + "/jobs/" + jobID
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	reqURL := strings.TrimSuffix(statusBaseURL, "/") + "/jobs/" + EncodePathSegment(jobID)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
 		return err
 	}
@@ -190,16 +192,18 @@ func readSSEJobStatus(r io.Reader, onEvent func(*JobStatus) bool) error {
 }
 
 // DownloadJob writes GET /jobs/{job_id}/download to outPath. Returns written bytes and error.
+// outPath must be non-empty; callers should resolve a safe path (e.g. under CWD).
 func (c *Client) DownloadJob(jobID, outPath string) (int64, int, error) {
-	body, status, err := c.Do(http.MethodGet, "/jobs/"+jobID+"/download", nil, nil)
+	if outPath == "" {
+		return 0, 0, fmt.Errorf("output path is required")
+	}
+	seg := EncodePathSegment(jobID)
+	body, status, err := c.Do(http.MethodGet, "/jobs/"+seg+"/download", nil, nil)
 	if err != nil {
 		return 0, status, err
 	}
 	if status != http.StatusOK {
 		return 0, status, fmt.Errorf("download failed: HTTP %d: %s", status, string(body))
-	}
-	if outPath == "" {
-		outPath = "bin/" + PomaArchiveName(jobID)
 	}
 	if err := os.MkdirAll(filepath.Dir(outPath), 0755); err != nil {
 		return 0, status, err
@@ -212,7 +216,8 @@ func (c *Client) DownloadJob(jobID, outPath string) (int64, int, error) {
 
 // DeleteJob sends DELETE /jobs/{job_id}.
 func (c *Client) DeleteJob(jobID string) ([]byte, int, error) {
-	return c.Do(http.MethodDelete, "/jobs/"+jobID, nil, nil)
+	seg := EncodePathSegment(jobID)
+	return c.Do(http.MethodDelete, "/jobs/"+seg, nil, nil)
 }
 
 // GetMe returns GET /me.
@@ -256,4 +261,15 @@ func ParseJobStatus(data []byte) (*JobStatus, error) {
 		return nil, err
 	}
 	return &s, nil
+}
+
+func sanitizeContentDispositionFilename(name string) string {
+	ext := path.Ext(name)
+	if name == "" || name == "." || name == ".." {
+		return "upload" + ext
+	}
+	if strings.ContainsAny(name, "\"\\\r\n\x00") {
+		return "upload" + ext
+	}
+	return name
 }

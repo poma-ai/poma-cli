@@ -32,9 +32,16 @@ func readConfigBytes(raw string) ([]byte, error) {
 		return nil, nil
 	}
 	if strings.HasPrefix(raw, "{") {
+		if err := reject_json_inline_c0(raw); err != nil {
+			return nil, err
+		}
 		return []byte(raw), nil
 	}
-	return os.ReadFile(raw)
+	path, err := validate_json_file_path_under_cwd(raw)
+	if err != nil {
+		return nil, err
+	}
+	return os.ReadFile(path)
 }
 
 func parseFileConfig(raw string) (*fileConfig, error) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 
 	"github.com/poma-ai/poma-cli/pkg/client"
 	"github.com/spf13/cobra"
@@ -32,8 +33,8 @@ func ingestCmd() *cobra.Command {
 		Use:   "ingest",
 		Short: "Ingest file (raw body, pro) POST /ingest",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if file == "" {
-				return fmt.Errorf("--file is required")
+			if err := validate_ingest_file_path(file); err != nil {
+				return err
 			}
 			cli := apiClient()
 			if cli.Token == "" {
@@ -65,8 +66,8 @@ func ingestEcoCmd() *cobra.Command {
 		Use:   "ingest-eco",
 		Short: "Ingest file (raw body, eco) POST /ingestEco",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if file == "" {
-				return fmt.Errorf("--file is required")
+			if err := validate_ingest_file_path(file); err != nil {
+				return err
 			}
 			cli := apiClient()
 			if cli.Token == "" {
@@ -98,8 +99,8 @@ func jobStatusCmd() *cobra.Command {
 		Use:   "status",
 		Short: "Get job status GET /jobs/{job_id}/status",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if jobID == "" {
-				return fmt.Errorf("--job-id is required")
+			if err := validate_job_id(jobID); err != nil {
+				return err
 			}
 			cli := apiClient()
 			if cli.Token == "" {
@@ -128,8 +129,8 @@ func jobStatusStreamCmd() *cobra.Command {
 		Short: "Stream job status via SSE until terminal state (GET status/v1/jobs/{job_id})",
 		Long:  "Subscribe to the Status API SSE stream for a job. Prints each status event until the job reaches done, failed, or deleted.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if jobID == "" {
-				return fmt.Errorf("--job-id is required")
+			if err := validate_job_id(jobID); err != nil {
+				return err
 			}
 			cli := apiClient()
 			if cli.Token == "" {
@@ -157,25 +158,35 @@ func jobDownloadCmd() *cobra.Command {
 		Use:   "download",
 		Short: "Download job result GET /jobs/{job_id}/download",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if jobID == "" {
-				return fmt.Errorf("--job-id is required")
+			if err := validate_job_id(jobID); err != nil {
+				return err
 			}
 			cli := apiClient()
 			if cli.Token == "" {
 				return fmt.Errorf("token is required (--token or POMA_API_TOKEN)")
 			}
-			outPath := output
-			n, status, err := cli.DownloadJob(jobID, outPath)
+			var safeOut string
+			if output != "" {
+				var err error
+				safeOut, err = validate_safe_output_dir(output)
+				if err != nil {
+					return err
+				}
+			} else {
+				var err error
+				safeOut, err = validate_safe_output_dir(filepath.Join("bin", client.PomaArchiveName(jobID)))
+				if err != nil {
+					return err
+				}
+			}
+			n, status, err := cli.DownloadJob(jobID, safeOut)
 			if err != nil {
 				return err
 			}
 			if status != 200 {
 				return fmt.Errorf("HTTP %d", status)
 			}
-			if outPath == "" {
-				outPath = "bin/" + jobID + ".poma"
-			}
-			fmt.Printf("Downloaded %d bytes to %s\n", n, outPath)
+			fmt.Printf("Downloaded %d bytes to %s\n", n, safeOut)
 			return nil
 		},
 	}
@@ -191,8 +202,8 @@ func jobDeleteCmd() *cobra.Command {
 		Use:   "delete",
 		Short: "Delete a job (best-effort) DELETE /jobs/{job_id}",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if jobID == "" {
-				return fmt.Errorf("--job-id is required")
+			if err := validate_job_id(jobID); err != nil {
+				return err
 			}
 			cli := apiClient()
 			if cli.Token == "" {

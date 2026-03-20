@@ -28,14 +28,19 @@ func RootCmd() *cobra.Command {
 		Long: "CLI for the POMA AI public API. Use --base-url and --token or POMA_API_TOKEN.\n" +
 			"Optional --json accepts inline JSON or a path to a JSON file; flag values override the file/JSON.",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if strings.TrimSpace(jsonArg) == "" {
-				return nil
+			if strings.TrimSpace(jsonArg) != "" {
+				cfg, err := parseFileConfig(jsonArg)
+				if err != nil {
+					return err
+				}
+				if err := validate_file_config(cfg); err != nil {
+					return err
+				}
+				if err := mergeConfigIntoFlags(cmd, cfg); err != nil {
+					return err
+				}
 			}
-			cfg, err := parseFileConfig(jsonArg)
-			if err != nil {
-				return err
-			}
-			return mergeConfigIntoFlags(cmd, cfg)
+			return validate_persistent_flags()
 		},
 	}
 	cmd.PersistentFlags().StringVar(&baseURL, "base-url", defaultApiBaseURL, "API base URL")
