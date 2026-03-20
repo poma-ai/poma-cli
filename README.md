@@ -57,6 +57,12 @@ Example: ingest a file, wait until the job finishes, then download the result. I
 ```bash
 # export POMA_API_TOKEN='<your-jwt>'
 
+# Ingest and download
+poma jobs ingest-sync --file document.pdf --output result.poma
+# poma jobs ingest-sync --filename document.pdf < document.pdf --output result.poma
+
+### Alternative: process each step manually
+
 # 1. Submit a file for processing; save the job_id from the output
 poma jobs ingest --file document.pdf
 # Or pipe bytes: poma jobs ingest --filename document.pdf < document.pdf
@@ -68,10 +74,6 @@ poma jobs status-stream --job-id <job_id>
 # 3. When status is "done", fetch the artifact
 poma jobs download --job-id <job_id> --output result.poma
 
-# Alternative: ingest, stream status, and download in one command
-# poma jobs ingest-sync --file document.pdf --output result.poma
-# poma jobs ingest-sync --filename document.pdf < document.pdf --output result.poma
-# Add --eco for POST /ingestEco instead of /ingest
 ```
 
 **Global flags** (apply to all subcommands):
