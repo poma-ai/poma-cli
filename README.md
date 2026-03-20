@@ -6,9 +6,19 @@
 
 # POMA CLI
 
-CLI for the POMA AI API.
+**Problem:**
 
-Supports PrimeCut Pro and PrimeCut Eco.
+"Current RAG systems chunk documents the same way a paper shredder does — fast, uniform, and completely unaware of meaning.
+
+Tables get split in half. Headings lose their content. A sentence that only makes sense in context gets retrieved alone. The AI does its best with the fragments it receives — but when the fragments are broken, the answers are too.
+
+Hallucinations, missed facts, and lost context aren't model problems. They're chunking problems."
+
+**Solution:**
+
+POMA AI PrimeCut.
+
+PrimeCut understands your document's content hierarchy before chunking — preserving structural relationships, eliminating context poisoning, and producing semantically coherent chunks that make every downstream RAG component more accurate by default.
 
 ## Install
 
@@ -29,40 +39,12 @@ go mod tidy
 go build -o poma .
 ```
 
-## Project structure
-
-Follows standard Go + Cobra layout:
-
-```
-.
-├── main.go                 # Entry point (thin)
-├── go.mod
-├── go.sum
-├── README.md
-├── AGENTS.md               # Full CLI/API reference for agents
-├── SKILL.md                # Short agent/dev checklist
-├── internal/
-│   └── cli/                # Cobra commands
-│       ├── root.go         # Root command, global flags, --json hook
-│       ├── config.go       # JSON config shape and flag merge
-│       ├── safety.go       # Input validation (paths, IDs, control chars)
-│       ├── user.go         # user subcommands
-│       ├── account.go      # account subcommands
-│       ├── jobs.go         # jobs subcommands
-│       ├── health.go       # health command
-│       └── util.go         # shared helpers (e.g. PrintJSON)
-└── pkg/
-    └── client/             # HTTP API client
-        ├── client.go
-        ├── models.go       # Request/response types
-        └── pathseg.go      # URL path-segment encoding
-```
-
 ## Usage
 
 - `--base-url`: API base URL (default: `https://api.poma-ai.com/v2`)
 - `--status-base-url`: Status SSE API base URL (default: `https://api.poma-ai.com/status/v1`)
 - `--token` or `POMA_API_TOKEN`: JWT for authenticated endpoints
+- `--json` *(optional)*: pass options as JSON instead of repeating flags. Value is either an inline object (must start with `{`) or a path to a `.json` file **under your current working directory**. Keys use **snake_case** (e.g. `token`, `job_id`, `file`, `output`, `base_url`). Any flag you set on the command line **overrides** the same field from `--json`.
 
 ### Simple flow (api key)
 
@@ -81,8 +63,6 @@ poma jobs status-stream --job-id <job_id>
 # 6. When status is done, download the result
 poma jobs download --job-id <job_id> --output result.poma
 ```
-
-
 
 ### Full flow (incl. registration/login)
 
@@ -113,5 +93,34 @@ poma jobs status-stream --job-id <job_id>
 
 # 6. When status is done, download the result
 poma jobs download --job-id <job_id> --output result.poma
+```
+
+## Project structure
+
+Follows standard Go + Cobra layout:
+
+```
+.
+├── main.go                 # Entry point (thin)
+├── go.mod
+├── go.sum
+├── README.md
+├── AGENTS.md               # Full CLI/API reference for agents
+├── SKILL.md                # Short agent/dev checklist
+├── internal/
+│   └── cli/                # Cobra commands
+│       ├── root.go         # Root command, global flags, --json hook
+│       ├── config.go       # JSON config shape and flag merge
+│       ├── safety.go       # Input validation (paths, IDs, control chars)
+│       ├── user.go         # user subcommands
+│       ├── account.go      # account subcommands
+│       ├── jobs.go         # jobs subcommands
+│       ├── health.go       # health command
+│       └── util.go         # shared helpers (e.g. PrintJSON)
+└── pkg/
+    └── client/             # HTTP API client
+        ├── client.go
+        ├── models.go       # Request/response types
+        └── pathseg.go      # URL path-segment encoding
 ```
 

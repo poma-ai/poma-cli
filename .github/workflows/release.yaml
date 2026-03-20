@@ -1,0 +1,40 @@
+# Pushes a GitHub release and updates the Homebrew tap cask (.goreleaser.yaml → homebrew_casks).
+#
+# Secrets:
+#   GITHUB_TOKEN — provided by Actions; used for the release on this repo (needs contents: write).
+#   TAP_GITHUB_TOKEN — PAT with repo access to poma-ai/homebrew-poma. Mapped to
+#     HOMEBREW_TAP_GITHUB_TOKEN for GoReleaser (GITHUB_TOKEN cannot push to another repo).
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  id-token: write # cosign keyless (Sigstore) signing in GoReleaser
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: go.mod
+
+      - uses: sigstore/cosign-installer@c56c2d3e59e4281cc41dea2217323ba5694b171e # v3.8.0
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6
+        with:
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}

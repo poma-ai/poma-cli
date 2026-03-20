@@ -1,0 +1,87 @@
+# GoReleaser — https://goreleaser.com
+#
+# Prereqs for Homebrew tap:
+#   - Create a tap repo (e.g. github.com/poma-ai/homebrew-tap).
+#   - PAT with repo scope for the tap: export HOMEBREW_TAP_GITHUB_TOKEN=ghp_...
+#   - Tag and run: goreleaser release --clean
+#   Users install with: brew tap poma-ai/poma && brew install --cask poma
+#   (GoReleaser v2.10+ publishes CLI binaries as a Homebrew Cask, not a Formula.)
+
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: poma
+    main: .
+    binary: poma
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+
+archives:
+  - formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+
+checksum:
+  algorithm: sha256
+
+signs:
+  - cmd: cosign
+    signature: "${artifact}.sigstore.json"
+    args:
+      - sign-blob
+      - "--bundle=${signature}"
+      - "${artifact}"
+      - "--yes"
+    artifacts: checksum
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - Merge pull request
+      - Merge branch
+
+homebrew_casks:
+  - name: poma
+    binaries:
+      - poma
+    homepage: https://github.com/poma-ai/poma-cli
+    description: CLI for the POMA AI API
+    url:
+      verified: github.com/poma-ai/poma-cli
+    caveats: |
+      Authenticated commands need a JWT: export POMA_API_TOKEN or use --token / --json.
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/poma"]
+          end
+    repository:
+      owner: poma-ai
+      name: homebrew-poma
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    commit_msg_template: "brew: update {{ .ProjectName }} cask to {{ .Tag }}"
+    directory: Casks
