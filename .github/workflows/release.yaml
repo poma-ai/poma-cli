@@ -1,9 +1,11 @@
 # Pushes a GitHub release and updates the Homebrew tap formula (.goreleaser.yaml → brews).
 #
 # Secrets:
-#   GITHUB_TOKEN — provided by Actions; used for the release on this repo (needs contents: write).
-#   TAP_GITHUB_TOKEN — PAT with repo access to poma-ai/homebrew-poma. Mapped to
-#     HOMEBREW_TAP_GITHUB_TOKEN for GoReleaser (GITHUB_TOKEN cannot push to another repo).
+#   GITHUB_TOKEN — Actions default; release artifacts on *this* repo only.
+#   POMA_DEPLOY_TOKEN — PAT mapped to HOMEBREW_TAP_GITHUB_TOKEN. Required to read/write the
+#     tap repo poma-ai/homebrew-poma (default branch + commits). GITHUB_TOKEN cannot do that.
+#     Classic PAT: enable scope `repo` (or at least repo + workflow if needed). Fine-grained:
+#     Contents read/write on `homebrew-poma` only. Regenerate if you see HTTP 401.
 
 name: Release
 
@@ -36,5 +38,4 @@ jobs:
           version: "~> v2"
           args: release --clean
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.POMA_DEPLOY_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.POMA_DEPLOY_TOKEN }}
