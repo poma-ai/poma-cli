@@ -38,4 +38,4 @@ jobs:
           version: "~> v2"
           args: release --clean
         env:
-          GITHUB_TOKEN: ${{ secrets.POMA_DEPLOY_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.POMA_DEPLOY_REPO_TOKEN }}
