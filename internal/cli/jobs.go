@@ -33,7 +33,7 @@ func ingestCmd() *cobra.Command {
 		Use:   "ingest",
 		Short: "Ingest file (raw body, pro) POST /ingest",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validate_ingest_file_path(file); err != nil {
+			if err := client.ValidateIngestFilePath(file); err != nil {
 				return err
 			}
 			cli := apiClient()
@@ -47,12 +47,7 @@ func ingestCmd() *cobra.Command {
 			if status != 201 {
 				return fmt.Errorf("HTTP %d: %s", status, string(body))
 			}
-			j, _ := client.ParseJob(body)
-			if j != nil {
-				fmt.Println("job_id:", j.JobID)
-			}
-			PrintJSON(body)
-			return nil
+			return printIngestJobIDOnly(body)
 		},
 	}
 	cmd.Flags().StringVarP(&file, "file", "f", "", "Path to file to ingest")
@@ -66,7 +61,7 @@ func ingestEcoCmd() *cobra.Command {
 		Use:   "ingest-eco",
 		Short: "Ingest file (raw body, eco) POST /ingestEco",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validate_ingest_file_path(file); err != nil {
+			if err := client.ValidateIngestFilePath(file); err != nil {
 				return err
 			}
 			cli := apiClient()
@@ -80,17 +75,29 @@ func ingestEcoCmd() *cobra.Command {
 			if status != 201 {
 				return fmt.Errorf("HTTP %d: %s", status, string(body))
 			}
-			j, _ := client.ParseJob(body)
-			if j != nil {
-				fmt.Println("job_id:", j.JobID)
-			}
-			PrintJSON(body)
-			return nil
+			return printIngestJobIDOnly(body)
 		},
 	}
 	cmd.Flags().StringVarP(&file, "file", "f", "", "Path to file to ingest")
 	_ = cmd.MarkFlagRequired("file")
 	return cmd
+}
+
+// printIngestJobIDOnly writes pretty-printed {"job_id":"..."} to stdout (normalized via ParseJob).
+func printIngestJobIDOnly(body []byte) error {
+	j, err := client.ParseJob(body)
+	if err != nil {
+		return fmt.Errorf("parse ingest response: %w", err)
+	}
+	if j.JobID == "" {
+		return fmt.Errorf("ingest response has no job_id")
+	}
+	out, err := json.MarshalIndent(map[string]string{"job_id": j.JobID}, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(out))
+	return nil
 }
 
 func jobStatusCmd() *cobra.Command {
@@ -99,7 +106,7 @@ func jobStatusCmd() *cobra.Command {
 		Use:   "status",
 		Short: "Get job status GET /jobs/{job_id}/status",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validate_job_id(jobID); err != nil {
+			if err := client.ValidateJobID(jobID); err != nil {
 				return err
 			}
 			cli := apiClient()
@@ -129,7 +136,7 @@ func jobStatusStreamCmd() *cobra.Command {
 		Short: "Stream job status via SSE until terminal state (GET status/v1/jobs/{job_id})",
 		Long:  "Subscribe to the Status API SSE stream for a job. Prints each status event until the job reaches done, failed, or deleted.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validate_job_id(jobID); err != nil {
+			if err := client.ValidateJobID(jobID); err != nil {
 				return err
 			}
 			cli := apiClient()
@@ -158,7 +165,7 @@ func jobDownloadCmd() *cobra.Command {
 		Use:   "download",
 		Short: "Download job result GET /jobs/{job_id}/download",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validate_job_id(jobID); err != nil {
+			if err := client.ValidateJobID(jobID); err != nil {
 				return err
 			}
 			cli := apiClient()
@@ -168,13 +175,13 @@ func jobDownloadCmd() *cobra.Command {
 			var safeOut string
 			if output != "" {
 				var err error
-				safeOut, err = validate_safe_output_dir(output)
+				safeOut, err = client.ValidateSafeOutputDir(output)
 				if err != nil {
 					return err
 				}
 			} else {
 				var err error
-				safeOut, err = validate_safe_output_dir(filepath.Join("bin", client.PomaArchiveName(jobID)))
+				safeOut, err = client.ValidateSafeOutputDir(filepath.Join("bin", client.PomaArchiveName(jobID)))
 				if err != nil {
 					return err
 				}
@@ -202,7 +209,7 @@ func jobDeleteCmd() *cobra.Command {
 		Use:   "delete",
 		Short: "Delete a job (best-effort) DELETE /jobs/{job_id}",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validate_job_id(jobID); err != nil {
+			if err := client.ValidateJobID(jobID); err != nil {
 				return err
 			}
 			cli := apiClient()

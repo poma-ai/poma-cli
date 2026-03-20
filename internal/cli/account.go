@@ -12,7 +12,7 @@ import (
 func AccountCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "account",
-		Short: "Account info and usage",
+		Short: "Account info: me, api-key, my-projects, my-usage",
 	}
 	cmd.AddCommand(meCmd(), apiKeyCmd(), myProjectsCmd(), myUsageCmd())
 	return cmd
@@ -43,8 +43,9 @@ func meCmd() *cobra.Command {
 
 func apiKeyCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "api-key",
-		Short: "Get long-lived API key GET /accounts/me (api_key only)",
+		Use:     "api-key",
+		Aliases: []string{"apikey"},
+		Short:   "Get long-lived API key GET /me (api_key only)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := apiClient()
 			if cli.Token == "" {
@@ -59,7 +60,7 @@ func apiKeyCmd() *cobra.Command {
 			}
 			var parsed client.AccountAPIKeyBody
 			if err := json.Unmarshal(body, &parsed); err != nil {
-				return fmt.Errorf("parse /accounts/me: %w", err)
+				return fmt.Errorf("parse /me: %w", err)
 			}
 			if parsed.APIKey == "" {
 				return fmt.Errorf("response has no api_key")

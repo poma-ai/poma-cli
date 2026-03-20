@@ -26,21 +26,22 @@ func RootCmd() *cobra.Command {
 		Use:   "poma",
 		Short: "POMA AI API v2 CLI",
 		Long: "CLI for the POMA AI public API. Use --base-url and --token or POMA_API_TOKEN.\n" +
-			"Optional --json accepts inline JSON or a path to a JSON file; flag values override the file/JSON.",
+			"Optional --json accepts inline JSON or a path to a JSON file; flag values override the file/JSON.\n\n" +
+			"Top-level commands: user, account, jobs, health. Subcommands (e.g. account api-key, jobs ingest) are listed under each: poma <cmd> --help.",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if strings.TrimSpace(jsonArg) != "" {
 				cfg, err := parseFileConfig(jsonArg)
 				if err != nil {
 					return err
 				}
-				if err := validate_file_config(cfg); err != nil {
+				if err := client.ValidateFileConfig(cfg); err != nil {
 					return err
 				}
 				if err := mergeConfigIntoFlags(cmd, cfg); err != nil {
 					return err
 				}
 			}
-			return validate_persistent_flags()
+			return client.ValidatePersistentFlags(baseURL, statusBaseURL, token, jsonArg)
 		},
 	}
 	cmd.PersistentFlags().StringVar(&baseURL, "base-url", defaultApiBaseURL, "API base URL")

@@ -68,7 +68,7 @@ poma jobs download --job-id <job_id> --output result.poma
 
 1. **Register** – send verification email to your address.
 2. **Verify** – use the code from the email; the CLI prints a JWT you can use for the next step.
-3. **Long-lived JWT** – with that JWT, use **`poma account api-key`** (`GET /accounts/me`; prints only `{"api_key":"…"}`) or **`poma account me`** (`GET /me`, full account JSON). The **`api_key`** value is the long-lived JWT—set `POMA_API_TOKEN` for day-to-day use (new shells, automation, etc.).
+3. **Long-lived JWT** – with that JWT, use **`poma account api-key`** (`GET /me`; prints only `{"api_key":"…"}`) or **`poma account me`** (`GET /me`, full account JSON). The **`api_key`** value is the long-lived JWT—set `POMA_API_TOKEN` for day-to-day use (new shells, automation, etc.).
 4. **Ingest** – upload a file; the response gives a `job_id`.
 5. **Watch status** – stream job status via SSE until it reaches `done` (or `failed`).
 6. **Download** – when status is `done`, download the result.
@@ -81,7 +81,7 @@ poma user register-email --email you@example.com
 poma user verify-email --email you@example.com --code 123456
 export POMA_API_TOKEN='<JWT from verify output>'
 
-# 3. Long-lived JWT — GET /accounts/me, field "api_key"
+# 3. Long-lived JWT — GET /me, field "api_key"
 export POMA_API_TOKEN=$(poma account api-key | jq -r '.api_key')
 
 # 4. Ingest a file
@@ -111,7 +111,6 @@ Follows standard Go + Cobra layout:
 │   └── cli/                # Cobra commands
 │       ├── root.go         # Root command, global flags, --json hook
 │       ├── config.go       # JSON config shape and flag merge
-│       ├── safety.go       # Input validation (paths, IDs, control chars)
 │       ├── user.go         # user subcommands
 │       ├── account.go      # account subcommands
 │       ├── jobs.go         # jobs subcommands
@@ -121,6 +120,7 @@ Follows standard Go + Cobra layout:
     └── client/             # HTTP API client
         ├── client.go
         ├── models.go       # Request/response types
-        └── pathseg.go      # URL path-segment encoding
+        ├── pathseg.go      # URL path-segment encoding
+        └── safety.go       # Input validation, FileConfig (--json shape)
 ```
 

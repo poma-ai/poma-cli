@@ -2,7 +2,7 @@
 
 This document describes the **implemented** POMA CLI (`poma`): responsibilities, API usage, and constraints. The CLI talks to the [Poma AI REST API](https://api.poma-ai.com/v2) for ingestion, job lifecycle, and downloading POMA archives.
 
-**This CLI is frequently invoked by AI/LLM agents. Always assume inputs can be adversarial** — see [Input safety](#input-safety) and `internal/cli/safety.go`.
+**This CLI is frequently invoked by AI/LLM agents. Always assume inputs can be adversarial** — see [Input safety](#input-safety) and `pkg/client/safety.go`.
 
 ---
 
@@ -13,8 +13,8 @@ Go + Cobra binary that wraps the public API: register/verify email, authenticate
 **Layout**
 
 - `main.go` — entrypoint, calls `internal/cli.Execute()`
-- `internal/cli/` — Cobra commands, `--json` merge, input validation (`safety.go`, `config.go`)
-- `pkg/client/` — HTTP client (`net/http`), models, path-segment encoding (`pathseg.go`)
+- `internal/cli/` — Cobra commands, `--json` merge (`config.go`)
+- `pkg/client/` — HTTP client (`net/http`), models, path-segment encoding (`pathseg.go`), input validation (`safety.go`, `FileConfig`)
 
 ---
 
@@ -49,7 +49,7 @@ Go + Cobra binary that wraps the public API: register/verify email, authenticate
 
 1. `poma user register-email --email …` → `POST /registerEmail` (optional `--username`, `--company`). No JWT.
 2. `poma user verify-email --email … --code …` → `POST /verifyEmail`; response includes a **token** (JWT). The command prints `Token: …` and the JSON body. Use this as a **bootstrap** credential only—it is enough to call `GET /me`.
-3. With that bearer token, fetch the long-lived JWT: either **`GET /me`** (`poma account me`, full JSON) or **`GET /accounts/me`** (`poma account api-key`, response reduced to `{"api_key":"…"}`). The **`api_key`** field is the value to use for `POMA_API_TOKEN` (or `--token` / `--json` `token`), not the verify-time token, for new shells, automation, and subsequent sessions.
+3. With that bearer token, fetch the long-lived JWT: either **`GET /me`** (`poma account me`, full JSON) or **`GET /me`** (`poma account api-key`, response reduced to `{"api_key":"…"}`). The **`api_key`** field is the value to use for `POMA_API_TOKEN` (or `--token` / `--json` `token`), not the verify-time token, for new shells, automation, and subsequent sessions.
 4. The CLI does **not** persist tokens to a file; callers supply flags, `POMA_API_TOKEN`, or `--json`.
 5. Authenticated calls use `Authorization: Bearer <token>` (the same header value whether using the verify token temporarily or the long-lived `api_key` JWT).
 
@@ -59,7 +59,7 @@ Go + Cobra binary that wraps the public API: register/verify email, authenticate
 
 ## Input safety
 
-Implemented in `internal/cli/safety.go` and `pkg/client` (path segments, `Content-Disposition` filename):
+Implemented in `pkg/client/safety.go` and `pkg/client` (path segments, `Content-Disposition` filename):
 
 - **C0 controls** (ASCII `0x00`–`0x1F`): rejected on most flag/JSON strings; inline `--json` allows tab/LF/CR only.
 - **Job IDs** (`--job-id`, JSON `job_id`): no `?` `#` `%`, no path separators; must be a single path segment for URLs.
@@ -95,13 +95,13 @@ Below, “agent” names are **logical groupings** for automation docs; each map
 | Command | API | Auth |
 |---------|-----|------|
 | `poma account me` | `GET /me` | JWT |
-| `poma account api-key` | `GET /accounts/me` | JWT |
+| `poma account api-key` | `GET /me` | JWT |
 | `poma account my-projects` | `GET /myProjects` | JWT |
 | `poma account my-usage` | `GET /myUsage` | JWT |
 
 No subcommand-specific flags beyond globals. Missing token → error.
 
-**`GET /me` response:** includes **`api_key`** — a long-lived JWT. Prefer this value for `POMA_API_TOKEN` / `--token` after first-time verify; do not treat the verify-email token as the long-term secret. **`poma account api-key`** calls **`GET /accounts/me`** and prints only `{"api_key":"…"}` (pretty-printed). **Do not** log or commit `api_key` or the verify token.
+**`GET /me` response:** includes **`api_key`** — a long-lived JWT. Prefer this value for `POMA_API_TOKEN` / `--token` after first-time verify; do not treat the verify-email token as the long-term secret. **`poma account api-key`** calls **`GET /me`** and prints only `{"api_key":"…"}` (pretty-printed). **Do not** log or commit `api_key` or the verify token.
 
 ---
 
@@ -130,7 +130,7 @@ No subcommand-specific flags beyond globals. Missing token → error.
 - **Download:** response body is read fully then written to the resolved path; **no** `--force` (overwrites if the path already exists). **No** pre-check that status is `done` — API may return an error if not ready.
 - **Delete:** best-effort; prints a short confirmation on HTTP 200.
 
-On success, ingest also prints `job_id: …` when the body parses as a job.
+On success, **`jobs ingest`** and **`jobs ingest-eco`** print only pretty-printed JSON `{"job_id":"…"}` (normalized `job_id`); they do not echo the full API body.
 
 ---
 

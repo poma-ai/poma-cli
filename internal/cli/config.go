@@ -6,25 +6,10 @@ import (
 	"os"
 	"strings"
 
+	"github.com/poma-ai/poma-cli/pkg/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
-
-// fileConfig holds optional JSON keys; only flags that exist on the invoked command are applied.
-type fileConfig struct {
-	BaseURL       string `json:"base_url,omitempty"`
-	StatusBaseURL string `json:"status_base_url,omitempty"`
-	Token         string `json:"token,omitempty"`
-
-	Email    string `json:"email,omitempty"`
-	Username string `json:"username,omitempty"`
-	Company  string `json:"company,omitempty"`
-	Code     string `json:"code,omitempty"`
-
-	File   string `json:"file,omitempty"`
-	JobID  string `json:"job_id,omitempty"`
-	Output string `json:"output,omitempty"`
-}
 
 func readConfigBytes(raw string) ([]byte, error) {
 	raw = strings.TrimSpace(raw)
@@ -32,19 +17,19 @@ func readConfigBytes(raw string) ([]byte, error) {
 		return nil, nil
 	}
 	if strings.HasPrefix(raw, "{") {
-		if err := reject_json_inline_c0(raw); err != nil {
+		if err := client.RejectJSONInlineC0(raw); err != nil {
 			return nil, err
 		}
 		return []byte(raw), nil
 	}
-	path, err := validate_json_file_path_under_cwd(raw)
+	path, err := client.ValidateJSONFilePathUnderCwd(raw)
 	if err != nil {
 		return nil, err
 	}
 	return os.ReadFile(path)
 }
 
-func parseFileConfig(raw string) (*fileConfig, error) {
+func parseFileConfig(raw string) (*client.FileConfig, error) {
 	b, err := readConfigBytes(raw)
 	if err != nil {
 		return nil, err
@@ -52,14 +37,14 @@ func parseFileConfig(raw string) (*fileConfig, error) {
 	if len(b) == 0 {
 		return nil, nil
 	}
-	var cfg fileConfig
+	var cfg client.FileConfig
 	if err := json.Unmarshal(b, &cfg); err != nil {
 		return nil, fmt.Errorf("parse --json: %w", err)
 	}
 	return &cfg, nil
 }
 
-func mergeConfigIntoFlags(cmd *cobra.Command, cfg *fileConfig) error {
+func mergeConfigIntoFlags(cmd *cobra.Command, cfg *client.FileConfig) error {
 	if cfg == nil {
 		return nil
 	}

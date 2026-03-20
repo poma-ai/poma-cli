@@ -124,7 +124,7 @@ func (c *Client) IngestEcoRaw(filePath string) ([]byte, int, error) {
 
 // GetJobStatus returns GET /jobs/{job_id}/status.
 func (c *Client) GetJobStatus(jobID string) ([]byte, int, error) {
-	seg := EncodePathSegment(jobID)
+	seg := JobPathSegment(jobID)
 	return c.Do(http.MethodGet, "/jobs/"+seg+"/status", nil, nil)
 }
 
@@ -133,7 +133,7 @@ func (c *Client) GetJobStatus(jobID string) ([]byte, int, error) {
 // For each job_status event, onEvent is called with the parsed JobStatus; if onEvent returns false, streaming stops.
 // The stream ends when the job reaches a terminal state (done, failed, deleted) or the context is cancelled.
 func (c *Client) StatusStream(ctx context.Context, jobID, statusBaseURL string, onEvent func(*JobStatus) bool) error {
-	reqURL := strings.TrimSuffix(statusBaseURL, "/") + "/jobs/" + EncodePathSegment(jobID)
+	reqURL := strings.TrimSuffix(statusBaseURL, "/") + "/jobs/" + JobPathSegment(jobID)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
 		return err
@@ -197,7 +197,7 @@ func (c *Client) DownloadJob(jobID, outPath string) (int64, int, error) {
 	if outPath == "" {
 		return 0, 0, fmt.Errorf("output path is required")
 	}
-	seg := EncodePathSegment(jobID)
+	seg := JobPathSegment(jobID)
 	body, status, err := c.Do(http.MethodGet, "/jobs/"+seg+"/download", nil, nil)
 	if err != nil {
 		return 0, status, err
@@ -216,7 +216,7 @@ func (c *Client) DownloadJob(jobID, outPath string) (int64, int, error) {
 
 // DeleteJob sends DELETE /jobs/{job_id}.
 func (c *Client) DeleteJob(jobID string) ([]byte, int, error) {
-	seg := EncodePathSegment(jobID)
+	seg := JobPathSegment(jobID)
 	return c.Do(http.MethodDelete, "/jobs/"+seg, nil, nil)
 }
 
@@ -225,9 +225,9 @@ func (c *Client) GetMe() ([]byte, int, error) {
 	return c.Do(http.MethodGet, "/me", nil, nil)
 }
 
-// GetAccountsMe returns GET /accounts/me.
+// GetAccountsMe returns GET /me.
 func (c *Client) GetAccountsMe() ([]byte, int, error) {
-	return c.Do(http.MethodGet, "/accounts/me", nil, nil)
+	return c.Do(http.MethodGet, "/me", nil, nil)
 }
 
 // GetMyProjects returns GET /myProjects.
@@ -255,6 +255,9 @@ func ParseJob(data []byte) (*Job, error) {
 	var j Job
 	if err := json.Unmarshal(data, &j); err != nil {
 		return nil, err
+	}
+	if j.JobID != "" {
+		j.JobID = JobPathSegment(j.JobID)
 	}
 	return &j, nil
 }

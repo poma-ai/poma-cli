@@ -27,7 +27,7 @@ func registerEmailCmd() *cobra.Command {
 			if email == "" {
 				return fmt.Errorf("email is required")
 			}
-			if err := validate_user_strings(email, username, company, ""); err != nil {
+			if err := client.ValidateUserStrings(email, username, company, ""); err != nil {
 				return err
 			}
 			req := &client.AccountRegisterEmailRequest{
@@ -63,7 +63,7 @@ func verifyEmailCmd() *cobra.Command {
 			if email == "" || code == "" {
 				return fmt.Errorf("email and code are required")
 			}
-			if err := validate_user_strings(email, "", "", code); err != nil {
+			if err := client.ValidateUserStrings(email, "", "", code); err != nil {
 				return err
 			}
 			req := &client.AccountVerifyEmailRequest{
