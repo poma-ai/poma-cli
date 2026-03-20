@@ -22,7 +22,18 @@ PrimeCut understands your document's content hierarchy before chunking — prese
 
 ## Install
 
-Requires Go 1.21 or later.
+**Homebrew**
+
+Install with [Homebrew](https://brew.sh):
+
+```bash
+brew tap poma-ai/poma
+brew install poma
+```
+
+**Go**
+
+Requires Go 1.21 or later:
 
 ```bash
 go install github.com/poma-ai/poma-cli@latest
@@ -30,7 +41,9 @@ go install github.com/poma-ai/poma-cli@latest
 
 Ensure `$GOPATH/bin` or `$GOBIN` is on your `PATH`. The binary is named `poma`.
 
-To build from source instead:
+**Source**
+
+To build from source instead (Go 1.21+):
 
 ```bash
 git clone https://github.com/poma-ai/poma-cli

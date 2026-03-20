@@ -1,11 +1,12 @@
 # GoReleaser — https://goreleaser.com
 #
-# Prereqs for Homebrew tap:
-#   - Create a tap repo (e.g. github.com/poma-ai/homebrew-tap).
-#   - PAT with repo scope for the tap: export HOMEBREW_TAP_GITHUB_TOKEN=ghp_...
+# Homebrew tap (poma-ai/homebrew-poma):
+#   - PAT with repo scope: HOMEBREW_TAP_GITHUB_TOKEN (see .github/workflows/release.yaml)
 #   - Tag and run: goreleaser release --clean
-#   Users install with: brew tap poma-ai/poma && brew install --cask poma
-#   (GoReleaser v2.10+ publishes CLI binaries as a Homebrew Cask, not a Formula.)
+#
+# Uses `brews` (Formula under Formula/) so `brew install poma` works without --cask.
+# GoReleaser deprecates this in favor of homebrew_casks for prebuilt binaries; expect a
+# deprecation warning until v3. One-time: remove Casks/poma.rb from the tap if migrating.
 
 version: 2
 
@@ -62,26 +63,24 @@ changelog:
       - Merge pull request
       - Merge branch
 
-homebrew_casks:
+brews:
   - name: poma
-    binaries:
+    ids:
       - poma
     homepage: https://github.com/poma-ai/poma-cli
     description: CLI for the POMA AI API
-    url:
-      verified: github.com/poma-ai/poma-cli
     caveats: |
       Authenticated commands need a JWT: export POMA_API_TOKEN or use --token / --json.
-    hooks:
-      post:
-        install: |
-          if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/poma"]
-          end
+    post_install: |
+      if OS.mac?
+        system "/usr/bin/xattr", "-dr", "com.apple.quarantine", "#{bin}/poma"
+      end
+    test: |
+      system "#{bin}/poma", "--help"
     repository:
       owner: poma-ai
       name: homebrew-poma
       branch: main
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    commit_msg_template: "brew: update {{ .ProjectName }} cask to {{ .Tag }}"
-    directory: Casks
+    commit_msg_template: "brew: update {{ .ProjectName }} formula to {{ .Tag }}"
+    directory: Formula

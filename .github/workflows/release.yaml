@@ -1,4 +1,4 @@
-# Pushes a GitHub release and updates the Homebrew tap cask (.goreleaser.yaml → homebrew_casks).
+# Pushes a GitHub release and updates the Homebrew tap formula (.goreleaser.yaml → brews).
 #
 # Secrets:
 #   GITHUB_TOKEN — provided by Actions; used for the release on this repo (needs contents: write).
@@ -37,4 +37,4 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.POMA_DEPLOY_TOKEN }}
