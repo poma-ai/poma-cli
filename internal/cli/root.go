@@ -2,6 +2,7 @@ package cli
 
 import (
 	"os"
+	"strings"
 
 	"github.com/poma-ai/poma-cli/pkg/client"
 	"github.com/spf13/cobra"
@@ -11,6 +12,7 @@ var (
 	baseURL       string
 	statusBaseURL string
 	token         string
+	jsonArg string
 )
 
 const (
@@ -23,11 +25,23 @@ func RootCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "poma",
 		Short: "POMA AI API v2 CLI",
-		Long:  "CLI for the POMA AI public API. Use --base-url and --token or POMA_API_TOKEN.",
+		Long: "CLI for the POMA AI public API. Use --base-url and --token or POMA_API_TOKEN.\n" +
+			"Optional --json accepts inline JSON or a path to a JSON file; flag values override the file/JSON.",
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if strings.TrimSpace(jsonArg) == "" {
+				return nil
+			}
+			cfg, err := parseFileConfig(jsonArg)
+			if err != nil {
+				return err
+			}
+			return mergeConfigIntoFlags(cmd, cfg)
+		},
 	}
 	cmd.PersistentFlags().StringVar(&baseURL, "base-url", defaultApiBaseURL, "API base URL")
 	cmd.PersistentFlags().StringVar(&statusBaseURL, "status-base-url", defaultStatusBaseURL, "Status SSE API base URL")
 	cmd.PersistentFlags().StringVar(&token, "token", os.Getenv("POMA_API_TOKEN"), "JWT token (or set POMA_API_TOKEN)")
+	cmd.PersistentFlags().StringVar(&jsonArg, "json", "", "JSON options (inline object or path to .json); explicit flags override")
 
 	cmd.AddCommand(
 		UserCmd(),
