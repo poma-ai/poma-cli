@@ -93,7 +93,15 @@ func (c *Client) Ingest(filePath string) ([]byte, int, error) {
 	if err != nil {
 		return nil, 0, err
 	}
-	name := sanitizeContentDispositionFilename(filepath.Base(filePath))
+	return c.IngestData(data, filepath.Base(filePath))
+}
+
+// IngestData sends POST /ingest with raw bytes (pro). filename is the basename used in Content-Disposition only.
+func (c *Client) IngestData(data []byte, filename string) ([]byte, int, error) {
+	if len(data) == 0 {
+		return nil, 0, fmt.Errorf("ingest body is empty")
+	}
+	name := sanitizeContentDispositionFilename(filepath.Base(filename))
 	headers := map[string]string{
 		"Content-Disposition": `attachment; filename="` + name + `"`,
 		"Content-Type":        "application/octet-stream",
@@ -113,7 +121,15 @@ func (c *Client) IngestEco(filePath string) ([]byte, int, error) {
 	if err != nil {
 		return nil, 0, err
 	}
-	name := sanitizeContentDispositionFilename(filepath.Base(filePath))
+	return c.IngestEcoData(data, filepath.Base(filePath))
+}
+
+// IngestEcoData sends POST /ingestEco with raw bytes (eco). filename is the basename used in Content-Disposition only.
+func (c *Client) IngestEcoData(data []byte, filename string) ([]byte, int, error) {
+	if len(data) == 0 {
+		return nil, 0, fmt.Errorf("ingest body is empty")
+	}
+	name := sanitizeContentDispositionFilename(filepath.Base(filename))
 	headers := map[string]string{
 		"Content-Disposition": `attachment; filename="` + name + `"`,
 		"Content-Type":        "application/octet-stream",

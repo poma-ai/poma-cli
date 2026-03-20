@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"path/filepath"
 
 	"github.com/poma-ai/poma-cli/pkg/client"
@@ -18,7 +19,9 @@ func JobsCmd() *cobra.Command {
 	}
 	cmd.AddCommand(
 		ingestCmd(),
+		ingestDataCmd(),
 		ingestEcoCmd(),
+		ingestEcoDataCmd(),
 		jobStatusCmd(),
 		jobStatusStreamCmd(),
 		jobDownloadCmd(),
@@ -55,6 +58,50 @@ func ingestCmd() *cobra.Command {
 	return cmd
 }
 
+func ingestDataCmd() *cobra.Command {
+	var data, filename string
+	cmd := &cobra.Command{
+		Use:   "ingest-data",
+		Short: "Ingest raw bytes (pro) POST /ingest",
+		Long: "Send the request body from --data or from stdin (pipe a file: poma jobs ingest-data < doc.pdf). " +
+			"For binary files prefer stdin; --data is best for small text payloads. " +
+			"--filename sets the Content-Disposition basename (required).",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var payload []byte
+			var err error
+			if filename == "" {
+				return fmt.Errorf("filename is required for ingest-data")
+			}
+			if data != "" {
+				payload = []byte(data)
+			} else {
+				payload, err = io.ReadAll(cmd.InOrStdin())
+				if err != nil {
+					return err
+				}
+			}
+			if len(payload) == 0 {
+				return fmt.Errorf("no ingest payload: set --data or pipe bytes to stdin")
+			}
+			cli := apiClient()
+			if cli.Token == "" {
+				return fmt.Errorf("token is required (--token or POMA_API_TOKEN)")
+			}
+			body, status, err := cli.IngestData(payload, filename)
+			if err != nil {
+				return err
+			}
+			if status != 201 {
+				return fmt.Errorf("HTTP %d: %s", status, string(body))
+			}
+			return printIngestJobIDOnly(body)
+		},
+	}
+	cmd.Flags().StringVar(&data, "data", "", "Inline body (use stdin for binary or large content)")
+	cmd.Flags().StringVarP(&filename, "filename", "f", "", `Basename for Content-Disposition`)
+	return cmd
+}
+
 func ingestEcoCmd() *cobra.Command {
 	var file string
 	cmd := &cobra.Command{
@@ -80,6 +127,50 @@ func ingestEcoCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVarP(&file, "file", "f", "", "Path to file to ingest")
 	_ = cmd.MarkFlagRequired("file")
+	return cmd
+}
+
+func ingestEcoDataCmd() *cobra.Command {
+	var data, filename string
+	cmd := &cobra.Command{
+		Use:   "ingest-eco-data",
+		Short: "Ingest raw bytes (eco) POST /ingestEco",
+		Long: "Send the request body from --data or from stdin (pipe a file: poma jobs ingest-eco-data < doc.pdf). " +
+			"For binary files prefer stdin; --data is best for small text payloads. " +
+			"--filename sets the Content-Disposition basename (required).",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var payload []byte
+			var err error
+			if filename == "" {
+				return fmt.Errorf("filename is required for ingest-eco-data")
+			}
+			if data != "" {
+				payload = []byte(data)
+			} else {
+				payload, err = io.ReadAll(cmd.InOrStdin())
+				if err != nil {
+					return err
+				}
+			}
+			if len(payload) == 0 {
+				return fmt.Errorf("no ingest payload: set --data or pipe bytes to stdin")
+			}
+			cli := apiClient()
+			if cli.Token == "" {
+				return fmt.Errorf("token is required (--token or POMA_API_TOKEN)")
+			}
+			body, status, err := cli.IngestEcoData(payload, filename)
+			if err != nil {
+				return err
+			}
+			if status != 201 {
+				return fmt.Errorf("HTTP %d: %s", status, string(body))
+			}
+			return printIngestJobIDOnly(body)
+		},
+	}
+	cmd.Flags().StringVar(&data, "data", "", "Inline body (use stdin for binary or large content)")
+	cmd.Flags().StringVarP(&filename, "filename", "n", "", `Basename for Content-Disposition`)
 	return cmd
 }
 

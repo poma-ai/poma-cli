@@ -110,7 +110,9 @@ No subcommand-specific flags beyond globals. Missing token → error.
 | Command | API | Auth |
 |---------|-----|------|
 | `poma jobs ingest` | `POST /ingest` (raw body, `application/octet-stream`) | JWT |
+| `poma jobs ingest-data` | `POST /ingest` (same as ingest; body from stdin or `--data` and `--filename` mandatory) | JWT |
 | `poma jobs ingest-eco` | `POST /ingestEco` (same shape) | JWT |
+| `poma jobs ingest-eco-data` | `POST /ingestEco` (same as ingest-eco; body from stdin or `--data` and `--filename` mandatory) | JWT |
 | `poma jobs status` | `GET /jobs/{job_id}/status` | JWT |
 | `poma jobs status-stream` | SSE `GET {status-base-url}/jobs/{job_id}` (`Accept: text/event-stream`) | JWT |
 | `poma jobs download` | `GET /jobs/{job_id}/download` | JWT |
@@ -119,18 +121,19 @@ No subcommand-specific flags beyond globals. Missing token → error.
 **Flags**
 
 - `ingest`, `ingest-eco`: `--file` / `-f` (required)
+- `ingest-data`, `ingest-eco-data`: `--data` (optional; if omitted, body is read from stdin), `--filename` / `-f` (required basename for `Content-Disposition`)
 - `status`, `status-stream`, `delete`: `--job-id` (required)
 - `download`: `--job-id` (required), `--output` / `-o` (optional; default `bin/{job_id}.poma` under CWD after safety check)
 
 **Behavior notes (actual implementation)**
 
-- **Ingest:** reads the **entire** file into memory, sets `Content-Disposition` (sanitized basename), `Content-Type: application/octet-stream`, `Content-Length`. No MIME sniffing, no `X-Base-URL` header (use `--base-url`).
+- **Ingest / ingest-data / ingest-eco / ingest-eco-data:** body is held in memory; same headers as above (`Content-Disposition` from file basename or `--filename`). **ingest** / **ingest-eco** read a path; **ingest-data** / **ingest-eco-data** use `--data` or stdin. No MIME sniffing, no `X-Base-URL` header (use `--base-url`).
 - **Status:** single request; **no** built-in polling or interval — wrap in a shell loop if needed.
 - **Status-stream:** reads SSE until a terminal `job_status` (`done`, `failed`, `deleted`) or EOF/error; each event is printed as JSON.
 - **Download:** response body is read fully then written to the resolved path; **no** `--force` (overwrites if the path already exists). **No** pre-check that status is `done` — API may return an error if not ready.
 - **Delete:** best-effort; prints a short confirmation on HTTP 200.
 
-On success, **`jobs ingest`** and **`jobs ingest-eco`** print only pretty-printed JSON `{"job_id":"…"}` (normalized `job_id`); they do not echo the full API body.
+On success, **`jobs ingest`**, **`jobs ingest-data`**, **`jobs ingest-eco`**, and **`jobs ingest-eco-data`** print only pretty-printed JSON `{"job_id":"…"}` (normalized `job_id`); they do not echo the full API body.
 
 ---
 
