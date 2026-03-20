@@ -138,6 +138,98 @@ func (c *Client) IngestEcoData(data []byte, filename string) ([]byte, int, error
 	return c.Do(http.MethodPost, "/ingestEco", bytes.NewReader(data), headers)
 }
 
+// IngestSync reads the file into memory, then calls IngestDataSync.
+func (c *Client) IngestSync(ctx context.Context, filePath string, isEco bool, statusBaseURL string, resolveOut func(jobID string) (outPath string, err error), onStatus func(*JobStatus)) (written int64, outPath string, retErr error) {
+	f, err := os.Open(filePath)
+	if err != nil {
+		return 0, "", err
+	}
+	defer f.Close()
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return 0, "", err
+	}
+	return c.IngestDataSync(ctx, data, filepath.Base(filePath), isEco, statusBaseURL, resolveOut, onStatus)
+}
+
+// IngestDataSync POSTs /ingest or /ingestEco with raw bytes, follows the status SSE stream until a
+// terminal job_status (done, failed, deleted), then downloads when status is done.
+// resolveOut returns a safe local path for DownloadJob; it is only called when the terminal status is done.
+// onStatus is optional; if set, it is invoked for each parsed job_status event.
+// On success with done, returns bytes written and the path passed to DownloadJob.
+func (c *Client) IngestDataSync(ctx context.Context, data []byte, filename string, isEco bool, statusBaseURL string, resolveOut func(jobID string) (outPath string, err error), onStatus func(*JobStatus)) (written int64, outPath string, retErr error) {
+	if c.Token == "" {
+		return 0, "", fmt.Errorf("token is required")
+	}
+	var body []byte
+	var st int
+	var err error
+	if isEco {
+		body, st, err = c.IngestEcoData(data, filename)
+	} else {
+		body, st, err = c.IngestData(data, filename)
+	}
+	PrintIngestJobIDOnly(body)
+
+	if err != nil {
+		return 0, "", err
+	}
+	if st != http.StatusCreated {
+		return 0, "", fmt.Errorf("ingest: HTTP %d: %s", st, string(body))
+	}
+	j, err := ParseJob(body)
+	if err != nil {
+		return 0, "", fmt.Errorf("parse ingest response: %w", err)
+	}
+	if j.JobID == "" {
+		return 0, "", fmt.Errorf("ingest response has no job_id")
+	}
+	jobID := j.JobID
+	if err = ValidateJobID(jobID); err != nil {
+		return 0, "", err
+	}
+
+	var last *JobStatus
+	streamErr := c.StatusStream(ctx, jobID, statusBaseURL, func(s *JobStatus) bool {
+		last = s
+		if onStatus != nil {
+			onStatus(s)
+		}
+		return true
+	})
+	if streamErr != nil {
+		return 0, "", streamErr
+	}
+	if last == nil {
+		return 0, "", fmt.Errorf("no job status events received")
+	}
+
+	switch last.Status {
+	case "done":
+		safeOut, err := resolveOut(jobID)
+		if err != nil {
+			return 0, "", err
+		}
+		n, dlStatus, err := c.DownloadJob(jobID, safeOut)
+		if err != nil {
+			return 0, "", err
+		}
+		if dlStatus != http.StatusOK {
+			return 0, "", fmt.Errorf("download: HTTP %d", dlStatus)
+		}
+		return n, safeOut, nil
+	case "failed":
+		if last.Error != "" {
+			return 0, "", fmt.Errorf("job failed: %s", last.Error)
+		}
+		return 0, "", fmt.Errorf("job failed")
+	case "deleted":
+		return 0, "", fmt.Errorf("job deleted")
+	default:
+		return 0, "", fmt.Errorf("job ended in non-terminal state: %q", last.Status)
+	}
+}
+
 // GetJobStatus returns GET /jobs/{job_id}/status.
 func (c *Client) GetJobStatus(jobID string) ([]byte, int, error) {
 	seg := JobPathSegment(jobID)
@@ -296,4 +388,21 @@ func sanitizeContentDispositionFilename(name string) string {
 		return "upload" + ext
 	}
 	return name
+}
+
+// printIngestJobIDOnly writes pretty-printed {"job_id":"..."} to stdout (normalized via ParseJob).
+func PrintIngestJobIDOnly(body []byte) error {
+	j, err := ParseJob(body)
+	if err != nil {
+		return fmt.Errorf("parse ingest response: %w", err)
+	}
+	if j.JobID == "" {
+		return fmt.Errorf("ingest response has no job_id")
+	}
+	out, err := json.MarshalIndent(map[string]string{"job_id": j.JobID}, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(out))
+	return nil
 }

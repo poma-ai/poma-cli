@@ -109,10 +109,8 @@ No subcommand-specific flags beyond globals. Missing token → error.
 
 | Command | API | Auth |
 |---------|-----|------|
-| `poma jobs ingest` | `POST /ingest` (raw body, `application/octet-stream`) | JWT |
-| `poma jobs ingest-data` | `POST /ingest` (same as ingest; body from stdin or `--data` and `--filename` mandatory) | JWT |
-| `poma jobs ingest-eco` | `POST /ingestEco` (same shape) | JWT |
-| `poma jobs ingest-eco-data` | `POST /ingestEco` (same as ingest-eco; body from stdin or `--data` and `--filename` mandatory) | JWT |
+| `poma jobs ingest` | `POST /ingest` or `POST /ingestEco` (**`--eco`** or aliases **`ingest-eco`** / **`ingest-eco-data`**). Aliases: **`ingest-data`**, **`ingest-eco`**, **`ingest-eco-data`** | JWT |
+| `poma jobs ingest-sync` | `POST /ingest` or `POST /ingestEco` (**`--eco`**), then SSE until terminal; if `done`, `GET /jobs/{job_id}/download` | JWT |
 | `poma jobs status` | `GET /jobs/{job_id}/status` | JWT |
 | `poma jobs status-stream` | SSE `GET {status-base-url}/jobs/{job_id}` (`Accept: text/event-stream`) | JWT |
 | `poma jobs download` | `GET /jobs/{job_id}/download` | JWT |
@@ -120,20 +118,21 @@ No subcommand-specific flags beyond globals. Missing token → error.
 
 **Flags**
 
-- `ingest`, `ingest-eco`: `--file` / `-f` (required)
-- `ingest-data`, `ingest-eco-data`: `--data` (optional; if omitted, body is read from stdin), `--filename` / `-f` (required basename for `Content-Disposition`)
+- `ingest`: either **`--file` / `-f`** (path to file), or **`--filename` / `-n`** plus **`--data`** or stdin (do not use **`--file`** with **`--data`**); **`--eco`** for **`/ingestEco`**. Aliases **`ingest-eco`** / **`ingest-eco-data`** imply eco (same as **`--eco`**)
+- `ingest-sync`: same input modes as **`ingest`** — **`--file` / `-f`**, or **`--filename` / `-n`** plus **`--data`** or stdin (do not mix **`--file`** with **`--data`**); **`--eco`** (use **`/ingestEco`** instead of **`/ingest`**); **`--output` / `-o`** (optional; same default as **`download`**: `bin/{job_id}.poma` under CWD after safety check)
 - `status`, `status-stream`, `delete`: `--job-id` (required)
 - `download`: `--job-id` (required), `--output` / `-o` (optional; default `bin/{job_id}.poma` under CWD after safety check)
 
 **Behavior notes (actual implementation)**
 
-- **Ingest / ingest-data / ingest-eco / ingest-eco-data:** body is held in memory; same headers as above (`Content-Disposition` from file basename or `--filename`). **ingest** / **ingest-eco** read a path; **ingest-data** / **ingest-eco-data** use `--data` or stdin. No MIME sniffing, no `X-Base-URL` header (use `--base-url`).
+- **Ingest:** body is held in memory; same headers (`Content-Disposition` from file basename or **`--filename`**). **`--file`** or stdin/**`--data`** + **`--filename` / `-n`**. Eco mode: **`--eco`**, or invoke via alias **`ingest-eco`** / **`ingest-eco-data`** (`cmd.CalledAs()`). No MIME sniffing, no `X-Base-URL` header (use **`--base-url`**).
 - **Status:** single request; **no** built-in polling or interval — wrap in a shell loop if needed.
 - **Status-stream:** reads SSE until a terminal `job_status` (`done`, `failed`, `deleted`) or EOF/error; each event is printed as JSON.
+- **ingest-sync:** **`client.IngestSync`** (path) or **`client.IngestDataSync`** (stdin/**`--data`**) with **`isEco`** from **`--eco`** — ingest → SSE like **status-stream** (`cmd.Context()` for cancellation) → download on **`done`**. Prints each status event as JSON. Terminal **`done`** → download (same path rules as **download**); **`failed`** / **`deleted`** → error (includes `error` from status when present for **`failed`**). Does **not** print the standalone pretty `{"job_id":…}` line used by **ingest**.
 - **Download:** response body is read fully then written to the resolved path; **no** `--force` (overwrites if the path already exists). **No** pre-check that status is `done` — API may return an error if not ready.
 - **Delete:** best-effort; prints a short confirmation on HTTP 200.
 
-On success, **`jobs ingest`**, **`jobs ingest-data`**, **`jobs ingest-eco`**, and **`jobs ingest-eco-data`** print only pretty-printed JSON `{"job_id":"…"}` (normalized `job_id`); they do not echo the full API body.
+On success, **`jobs ingest`** (and aliases **`ingest-data`**, **`ingest-eco`**, **`ingest-eco-data`**) print only pretty-printed JSON `{"job_id":"…"}` (normalized `job_id`); they do not echo the full API body.
 
 ---
 
