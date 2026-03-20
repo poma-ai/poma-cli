@@ -65,8 +65,6 @@ changelog:
 
 brews:
   - name: poma
-    ids:
-      - poma
     homepage: https://github.com/poma-ai/poma-cli
     description: CLI for the POMA AI API
     caveats: |
