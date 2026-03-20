@@ -82,8 +82,8 @@ func (c *Client) VerifyEmail(req *AccountVerifyEmailRequest) ([]byte, int, error
 	return c.DoJSON(http.MethodPost, "/verifyEmail", req)
 }
 
-// IngestRaw sends POST /ingest with raw file body (pro).
-func (c *Client) IngestRaw(filePath string) ([]byte, int, error) {
+// Ingest sends POST /ingest with raw file body (pro).
+func (c *Client) Ingest(filePath string) ([]byte, int, error) {
 	f, err := os.Open(filePath)
 	if err != nil {
 		return nil, 0, err
@@ -102,8 +102,8 @@ func (c *Client) IngestRaw(filePath string) ([]byte, int, error) {
 	return c.Do(http.MethodPost, "/ingest", bytes.NewReader(data), headers)
 }
 
-// IngestEcoRaw sends POST /ingestEco with raw file body (eco).
-func (c *Client) IngestEcoRaw(filePath string) ([]byte, int, error) {
+// IngestEco sends POST /ingestEco with raw file body (eco).
+func (c *Client) IngestEco(filePath string) ([]byte, int, error) {
 	f, err := os.Open(filePath)
 	if err != nil {
 		return nil, 0, err

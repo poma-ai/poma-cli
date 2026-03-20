@@ -40,7 +40,7 @@ func ingestCmd() *cobra.Command {
 			if cli.Token == "" {
 				return fmt.Errorf("token is required (--token or POMA_API_TOKEN)")
 			}
-			body, status, err := cli.IngestRaw(file)
+			body, status, err := cli.Ingest(file)
 			if err != nil {
 				return err
 			}
@@ -68,7 +68,7 @@ func ingestEcoCmd() *cobra.Command {
 			if cli.Token == "" {
 				return fmt.Errorf("token is required (--token or POMA_API_TOKEN)")
 			}
-			body, status, err := cli.IngestEcoRaw(file)
+			body, status, err := cli.IngestEco(file)
 			if err != nil {
 				return err
 			}
