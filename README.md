@@ -22,28 +22,24 @@ PrimeCut understands your document's content hierarchy before chunking — prese
 
 ## Install
 
-**Homebrew**
+You can install the `poma` binary in any of these ways:
 
-Install with [Homebrew](https://brew.sh):
+**Homebrew** — [Homebrew](https://brew.sh) serves prebuilt releases from the [`poma-ai/poma`](https://github.com/poma-ai/homebrew-poma) tap:
 
 ```bash
 brew tap poma-ai/poma
 brew install poma
 ```
 
-**Go**
-
-Requires Go 1.21 or later:
+**Go toolchain** — requires Go 1.21 or later:
 
 ```bash
 go install github.com/poma-ai/poma-cli@latest
 ```
 
-Ensure `$GOPATH/bin` or `$GOBIN` is on your `PATH`. The binary is named `poma`.
+Put `$GOPATH/bin` or `$GOBIN` on your `PATH` if it is not already.
 
-**Source**
-
-To build from source instead (Go 1.21+):
+**From source** — clone this repository and build (Go 1.21+):
 
 ```bash
 git clone https://github.com/poma-ai/poma-cli
@@ -54,51 +50,59 @@ go build -o poma .
 
 ## Usage
 
+Most API calls need a JWT (see [API key](#api-key) below). Export it or pass `--token` on each command.
+
+Example: ingest a file, wait until the job finishes, then download the result. Ingest is asynchronous, so you poll or stream status before downloading.
+
 ```bash
-# export POMA_API_TOKEN='<paste api_key here>'
+# export POMA_API_TOKEN='<your-jwt>'
 
-# 4. Ingest a file
+# 1. Submit a file for processing; save the job_id from the output
 poma jobs ingest --file document.pdf
-# note the job_id from the output
 
-# 5. Stream status until done (or failed). The ingest job is async.
+# 2. Wait until the job completes (or fails)
 poma jobs status-stream --job-id <job_id>
+# Or poll: poma jobs status --job-id <job_id>
 
-# 6. When status is done, download the result
+# 3. When status is "done", fetch the artifact
 poma jobs download --job-id <job_id> --output result.poma
 ```
 
-**Global parameters:**
-- `--base-url`: API base URL (default: `https://api.poma-ai.com/v2`)
-- `--status-base-url`: Status SSE API base URL (default: `https://api.poma-ai.com/status/v1`)
-- `--token` or `POMA_API_TOKEN`: JWT for authenticated endpoints
-- `--json` *(optional)*: pass options as JSON instead of repeating flags. Value is either an inline object (must start with `{`) or a path to a `.json` file **under your current working directory**. Keys use **snake_case** (e.g. `token`, `job_id`, `file`, `output`, `base_url`). Any flag you set on the command line **overrides** the same field from `--json`.
+**Global flags** (apply to all subcommands):
 
-### Get api key
+- `--base-url` — REST API base URL (default: `https://api.poma-ai.com/v2`)
+- `--status-base-url` — status / SSE base URL (default: `https://api.poma-ai.com/status/v1`)
+- `--token` or env `POMA_API_TOKEN` — JWT for authenticated requests
+- `--json` *(optional)* — merge options from JSON: either an inline object (must start with `{`) or a path to a `.json` file **in the current working directory**. Keys are **snake_case** (e.g. `token`, `job_id`, `file`, `output`, `base_url`). Explicit flags **override** values from `--json`.
 
-**Register for free on website**
+### API key
 
-- [POMA web app](https://app.poma-ai.com)
-- Copy api key
+Register for free and try out our ingestion / chunking solution (1000 pages / 100k tokens).
 
+**Via the web app**
 
-**Register for free using cli**
+1. Sign up at [app.poma-ai.com](https://app.poma-ai.com).
+2. Copy your API key from the app and set `POMA_API_TOKEN`, or pass it with `--token`.
+
+**Via the CLI**
 
 ```bash
-# 1. Register (no token)
+# 1. Start registration (no token required)
 poma user register-email --email you@example.com
 
-# 2. Verify with code from email (JWT from verify is enough for account me / api-key)
+# 2. Complete verification with the code from email; the command prints a JWT you can use immediately
 poma user verify-email --email you@example.com --code 123456
-export POMA_API_TOKEN='<JWT from verify output>'
+export POMA_API_TOKEN='<jwt-from-verify-output>'
 
-# 3. Long-lived JWT — GET /me, field "api_key"
+# 3. Optional: replace with the long-lived JWT from your account (requires jq)
 export POMA_API_TOKEN=$(poma account api-key | jq -r '.api_key')
 ```
 
+`poma account api-key` prints JSON with an `api_key` field (a JWT suitable for ongoing CLI use).
+
 ## Project structure
 
-Follows standard Go + Cobra layout:
+Standard Go layout with Cobra under `internal/cli` and a small HTTP client in `pkg/client`:
 
 ```
 .
