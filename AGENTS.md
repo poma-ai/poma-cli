@@ -47,8 +47,8 @@ Go + Cobra binary that wraps the public API: register/verify email, authenticate
 
 ## Authentication flow
 
-1. `poma user register-email --email …` → `POST /registerEmail` (optional `--username`, `--company`). No JWT.
-2. `poma user verify-email --email … --code …` → `POST /verifyEmail`; response includes a **token** (JWT). The command prints `Token: …` and the JSON body. Use this as a **bootstrap** credential only—it is enough to call `GET /me`.
+1. `poma account register-email --email …` → `POST /registerEmail` (optional `--username`, `--company`). No JWT.
+2. `poma account verify-email --email … --code …` → `POST /verifyEmail`; response includes a **token** (JWT). The command prints `Token: …` and the JSON body. Use this as a **bootstrap** credential only—it is enough to call `GET /me`.
 3. With that bearer token, fetch the long-lived JWT: either **`GET /me`** (`poma account me`, full JSON) or **`GET /me`** (`poma account api-key`, response reduced to `{"api_key":"…"}`). The **`api_key`** field is the value to use for `POMA_API_TOKEN` (or `--token` / `--json` `token`), not the verify-time token, for new shells, automation, and subsequent sessions.
 4. The CLI does **not** persist tokens to a file; callers supply flags, `POMA_API_TOKEN`, or `--json`.
 5. Authenticated calls use `Authorization: Bearer <token>` (the same header value whether using the verify token temporarily or the long-lived `api_key` JWT).
@@ -74,32 +74,24 @@ Ingest `--file` rejects control characters but **may** be any readable path (not
 
 Below, “agent” names are **logical groupings** for automation docs; each maps to real `poma …` subcommands.
 
-### `user` — registration & verification
+### `account` — registration, verification, and account data
 
 | Command | API | Auth |
 |---------|-----|------|
-| `poma user register-email` | `POST /registerEmail` | No |
-| `poma user verify-email` | `POST /verifyEmail` | No |
+| `poma account register-email` | `POST /registerEmail` | No |
+| `poma account verify-email` | `POST /verifyEmail` | No |
+| `poma account api-key` | `GET /me` | JWT |
+| `poma account me` | `GET /me` | JWT |
+| `poma account my-projects` | `GET /myProjects` | JWT |
+| `poma account my-usage` | `GET /myUsage` | JWT |
 
 **Flags**
 
 - `register-email`: `--email` / `-e` (required), `--username` / `-u`, `--company` / `-c`
 - `verify-email`: `--email` / `-e`, `--code` / `-k` (both required)
+- `me`, `api-key`, `my-projects`, `my-usage`: no subcommand-specific flags beyond globals. Missing token → error.
 
 **Verify output:** prints `Token:` line plus JSON (includes JWT). Use it next to call `poma account me` and read **`api_key`** for long-term use. **Do not** log either value in shared transcripts.
-
----
-
-### `account` — authenticated account data
-
-| Command | API | Auth |
-|---------|-----|------|
-| `poma account me` | `GET /me` | JWT |
-| `poma account api-key` | `GET /me` | JWT |
-| `poma account my-projects` | `GET /myProjects` | JWT |
-| `poma account my-usage` | `GET /myUsage` | JWT |
-
-No subcommand-specific flags beyond globals. Missing token → error.
 
 **`GET /me` response:** includes **`api_key`** — a long-lived JWT. Prefer this value for `POMA_API_TOKEN` / `--token` after first-time verify; do not treat the verify-email token as the long-term secret. **`poma account api-key`** calls **`GET /me`** and prints only `{"api_key":"…"}` (pretty-printed). **Do not** log or commit `api_key` or the verify token.
 
@@ -158,7 +150,7 @@ Commands return `error` from Cobra `RunE`; `main` prints it and exits with code 
 
 ### Token precedence
 
-Effective token: `--token` / JSON `token` after merge, else default from `POMA_API_TOKEN` at flag definition time. For stable automation, that value should normally be the **`api_key`** from `GET /me`, not the short-lived token from `verify-email` alone. **Never** print full JWTs or `api_key` in agent logs or commit them to repos.
+Effective token: explicit **`--token`**, else JSON **`token`** from **`--json`** merge, else **`POMA_API_TOKEN`** (applied in **`PersistentPreRun`** so **`--help` does not echo the env value**). For stable automation, that value should normally be the **`api_key`** from **`GET /me`**, not the short-lived token from **`verify-email`** alone. **Never** print full JWTs or **`api_key`** in agent logs or commit them to repos.
 
 ### Credit / quota messaging
 

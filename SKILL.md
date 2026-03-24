@@ -7,7 +7,7 @@ Short checklist for humans and **AI agents** working on this repository. For ful
 ## Operating the CLI
 
 - **Build:** `go build -o poma .` from repo root (Go 1.21+, see `go.mod`).
-- **Auth:** After `user verify-email`, prefer long-lived **`api_key`** via `account api-key` (`GET /me`). Export **`POMA_API_TOKEN`** or pass **`--token`** / **`--json`**.
+- **Auth:** After `account verify-email`, prefer long-lived **`api_key`** via **`account api-key`** (`GET /me`). Export **`POMA_API_TOKEN`** or pass **`--token`** / **`--json`**.
 - **Defaults:** `--base-url` and `--status-base-url` point at production; override for staging or mocks.
 - **Machine-friendly output:** Commands print pretty JSON to stdout; **`account api-key`** emits only `{"api_key":"…"}`.
 
@@ -24,7 +24,7 @@ Short checklist for humans and **AI agents** working on this repository. For ful
 
 ## Extending the CLI (`internal/cli`)
 
-1. Add **`cobra.Command`** in the right file (`user.go`, `account.go`, `jobs.go`, …) or a new file if the group is large.
+1. Add **`cobra.Command`** in the right file (`account.go`, `jobs.go`, …) or a new file if the group is large.
 2. Register the command on the parent in the parent’s constructor (e.g. **`AccountCmd()`** → **`cmd.AddCommand(...)`**).
 3. Reuse **`apiClient()`** and **`PrintJSON`**; return errors from **`RunE`** (don’t **`os.Exit`** in commands).
 4. **Validate inputs** before calling the client:

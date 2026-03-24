@@ -27,7 +27,7 @@ func RootCmd() *cobra.Command {
 		Short: "POMA AI API v2 CLI",
 		Long: "CLI for the POMA AI public API. Use --base-url and --token or POMA_API_TOKEN.\n" +
 			"Optional --json accepts inline JSON or a path to a JSON file; flag values override the file/JSON.\n\n" +
-			"Top-level commands: user, account, jobs, health. Subcommands (e.g. account api-key, jobs ingest) are listed under each: poma <cmd> --help.",
+			"Top-level commands: account, jobs, health. Subcommands (e.g. account register-email, account api-key, jobs ingest) are listed under each: poma <cmd> --help.",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// Do not use os.Getenv as the flag default — it would print the JWT in --help.
 			if flg := cmd.Flags().Lookup("token"); flg != nil && !flg.Changed {
@@ -54,7 +54,6 @@ func RootCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&jsonArg, "json", "", "JSON options (inline object or path to .json); explicit flags override")
 
 	cmd.AddCommand(
-		UserCmd(),
 		AccountCmd(),
 		JobsCmd(),
 		HealthCmd(),

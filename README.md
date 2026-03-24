@@ -96,10 +96,10 @@ Register for free and try out our ingestion / chunking solution (1000 pages / 10
 
 ```bash
 # 1. Start registration (no token required)
-poma user register-email --email you@example.com
+poma account register-email --email you@example.com
 
 # 2. Complete verification with the code from email; the command prints a JWT you can use immediately
-poma user verify-email --email you@example.com --code 123456
+poma account verify-email --email you@example.com --code 123456
 export POMA_API_TOKEN='<jwt-from-verify-output>'
 
 # 3. Optional: replace with the long-lived JWT from your account (requires jq)
@@ -124,8 +124,7 @@ Standard Go layout with Cobra under `internal/cli` and a small HTTP client in `p
 │   └── cli/                # Cobra commands
 │       ├── root.go         # Root command, global flags, --json hook
 │       ├── config.go       # JSON config shape and flag merge
-│       ├── user.go         # user subcommands
-│       ├── account.go      # account subcommands
+│       ├── account.go      # account subcommands (register, verify, me, …)
 │       ├── jobs.go         # jobs subcommands
 │       ├── health.go       # health command
 │       └── util.go         # shared helpers (e.g. PrintJSON)
