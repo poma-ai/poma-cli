@@ -7,7 +7,7 @@ Short checklist for humans and **AI agents** working on this repository. For ful
 ## Operating the CLI
 
 - **Build:** `go build -o poma .` from repo root (Go 1.21+, see `go.mod`).
-- **Auth:** After `account verify-email`, prefer long-lived **`api_key`** via **`account api-key`** (`GET /me`). Export **`POMA_API_TOKEN`** or pass **`--token`** / **`--json`**.
+- **Auth:** After `account verify-email`, prefer long-lived **`api_key`** via **`account api-key`** (`GET /me`). Export **`POMA_API_KEY`** or pass **`--token`** / **`--json`**.
 - **Defaults:** `--base-url` and `--status-base-url` point at production; override for staging or mocks.
 - **Machine-friendly output:** Commands print pretty JSON to stdout; **`account api-key`** emits only `{"api_key":"…"}`.
 

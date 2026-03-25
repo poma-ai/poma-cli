@@ -109,7 +109,7 @@ func meCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := apiClient()
 			if cli.Token == "" {
-				return fmt.Errorf("token is required (--token or POMA_API_TOKEN)")
+				return fmt.Errorf("token is required (--token or POMA_API_KEY)")
 			}
 			body, status, err := cli.GetMe()
 			if err != nil {
@@ -133,7 +133,7 @@ func apiKeyCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := apiClient()
 			if cli.Token == "" {
-				return fmt.Errorf("token is required (--token or POMA_API_TOKEN)")
+				return fmt.Errorf("token is required (--token or POMA_API_KEY)")
 			}
 			body, status, err := cli.GetAccountsMe()
 			if err != nil {
@@ -167,7 +167,7 @@ func myProjectsCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := apiClient()
 			if cli.Token == "" {
-				return fmt.Errorf("token is required (--token or POMA_API_TOKEN)")
+				return fmt.Errorf("token is required (--token or POMA_API_KEY)")
 			}
 			body, status, err := cli.GetMyProjects()
 			if err != nil {
@@ -190,7 +190,7 @@ func myUsageCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := apiClient()
 			if cli.Token == "" {
-				return fmt.Errorf("token is required (--token or POMA_API_TOKEN)")
+				return fmt.Errorf("token is required (--token or POMA_API_KEY)")
 			}
 			body, status, err := cli.GetMyUsage()
 			if err != nil {

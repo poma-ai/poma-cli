@@ -41,7 +41,7 @@ func ingestCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := apiClient()
 			if cli.Token == "" {
-				return fmt.Errorf("token is required (--token or POMA_API_TOKEN)")
+				return fmt.Errorf("token is required (--token or POMA_API_KEY)")
 			}
 			isEco := eco
 			switch cmd.CalledAs() {
@@ -126,7 +126,7 @@ func ingestSyncCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := apiClient()
 			if cli.Token == "" {
-				return fmt.Errorf("token is required (--token or POMA_API_TOKEN)")
+				return fmt.Errorf("token is required (--token or POMA_API_KEY)")
 			}
 			out := output
 			resolve := func(jobID string) (string, error) {
@@ -197,7 +197,7 @@ func jobStatusCmd() *cobra.Command {
 			}
 			cli := apiClient()
 			if cli.Token == "" {
-				return fmt.Errorf("token is required (--token or POMA_API_TOKEN)")
+				return fmt.Errorf("token is required (--token or POMA_API_KEY)")
 			}
 			body, status, err := cli.GetJobStatus(jobID)
 			if err != nil {
@@ -227,7 +227,7 @@ func jobStatusStreamCmd() *cobra.Command {
 			}
 			cli := apiClient()
 			if cli.Token == "" {
-				return fmt.Errorf("token is required (--token or POMA_API_TOKEN)")
+				return fmt.Errorf("token is required (--token or POMA_API_KEY)")
 			}
 			if err := cli.StatusStream(cmd.Context(), jobID, statusBaseURLOrDefault(), func(s *client.JobStatus) bool {
 				data, _ := json.Marshal(s)
@@ -255,7 +255,7 @@ func jobDownloadCmd() *cobra.Command {
 			}
 			cli := apiClient()
 			if cli.Token == "" {
-				return fmt.Errorf("token is required (--token or POMA_API_TOKEN)")
+				return fmt.Errorf("token is required (--token or POMA_API_KEY)")
 			}
 			safeOut, err := resolveJobDownloadPath(jobID, output)
 			if err != nil {
@@ -296,7 +296,7 @@ func jobDeleteCmd() *cobra.Command {
 			}
 			cli := apiClient()
 			if cli.Token == "" {
-				return fmt.Errorf("token is required (--token or POMA_API_TOKEN)")
+				return fmt.Errorf("token is required (--token or POMA_API_KEY)")
 			}
 			body, status, err := cli.DeleteJob(jobID)
 			if err != nil {

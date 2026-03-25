@@ -25,7 +25,7 @@ Go + Cobra binary that wraps the public API: register/verify email, authenticate
 | **Language** | Go 1.21+ (`go.mod`) |
 | **CLI** | [Cobra](https://github.com/spf13/cobra) |
 | **HTTP** | `net/http`; `Authorization: Bearer <token>` when `Client.Token` is set |
-| **Config / secrets** | Flags, `POMA_API_TOKEN`, and optional `--json` (see below). **No** on-disk config file in this repo. |
+| **Config / secrets** | Flags, `POMA_API_KEY`, and optional `--json` (see below). **No** on-disk config file in this repo. |
 | **Output** | `fmt` + `PrintJSON` for API bodies; errors to stderr via caller (`main` prints error and exits 1) |
 
 ---
@@ -36,7 +36,7 @@ Go + Cobra binary that wraps the public API: register/verify email, authenticate
 |------|---------|--------|
 | `--base-url` | `https://api.poma-ai.com/v2` | Must be `http` or `https` with a host. |
 | `--status-base-url` | `https://api.poma-ai.com/status/v1` | Used by `jobs status-stream` only. |
-| `--token` | `$POMA_API_TOKEN` | Required for authenticated routes. |
+| `--token` | `$POMA_API_KEY` | Required for authenticated routes. |
 | `--json` | (empty) | Inline JSON object (`{...}`) **or** path to a `.json` file under the process **CWD**; keys map to flags; explicit flags **override** JSON. |
 
 ### `--json` keys (snake_case)
@@ -49,11 +49,11 @@ Go + Cobra binary that wraps the public API: register/verify email, authenticate
 
 1. `poma account register-email --email …` → `POST /registerEmail` (optional `--username`, `--company`). No JWT.
 2. `poma account verify-email --email … --code …` → `POST /verifyEmail`; response includes a **token** (JWT). The command prints `Token: …` and the JSON body. Use this as a **bootstrap** credential only—it is enough to call `GET /me`.
-3. With that bearer token, fetch the long-lived JWT: either **`GET /me`** (`poma account me`, full JSON) or **`GET /me`** (`poma account api-key`, response reduced to `{"api_key":"…"}`). The **`api_key`** field is the value to use for `POMA_API_TOKEN` (or `--token` / `--json` `token`), not the verify-time token, for new shells, automation, and subsequent sessions.
-4. The CLI does **not** persist tokens to a file; callers supply flags, `POMA_API_TOKEN`, or `--json`.
+3. With that bearer token, fetch the long-lived JWT: either **`GET /me`** (`poma account me`, full JSON) or **`GET /me`** (`poma account api-key`, response reduced to `{"api_key":"…"}`). The **`api_key`** field is the value to use for `POMA_API_KEY` (or `--token` / `--json` `token`), not the verify-time token, for new shells, automation, and subsequent sessions.
+4. The CLI does **not** persist tokens to a file; callers supply flags, `POMA_API_KEY`, or `--json`.
 5. Authenticated calls use `Authorization: Bearer <token>` (the same header value whether using the verify token temporarily or the long-lived `api_key` JWT).
 
-**Automation hint:** `export POMA_API_TOKEN=$(poma account api-key | jq -r '.api_key')`, or parse `api_key` from `poma account me`.
+**Automation hint:** `export POMA_API_KEY=$(poma account api-key | jq -r '.api_key')`, or parse `api_key` from `poma account me`.
 
 ---
 
@@ -93,7 +93,7 @@ Below, “agent” names are **logical groupings** for automation docs; each map
 
 **Verify output:** prints `Token:` line plus JSON (includes JWT). Use it next to call `poma account me` and read **`api_key`** for long-term use. **Do not** log either value in shared transcripts.
 
-**`GET /me` response:** includes **`api_key`** — a long-lived JWT. Prefer this value for `POMA_API_TOKEN` / `--token` after first-time verify; do not treat the verify-email token as the long-term secret. **`poma account api-key`** calls **`GET /me`** and prints only `{"api_key":"…"}` (pretty-printed). **Do not** log or commit `api_key` or the verify token.
+**`GET /me` response:** includes **`api_key`** — a long-lived JWT. Prefer this value for `POMA_API_KEY` / `--token` after first-time verify; do not treat the verify-email token as the long-term secret. **`poma account api-key`** calls **`GET /me`** and prints only `{"api_key":"…"}` (pretty-printed). **Do not** log or commit `api_key` or the verify token.
 
 ---
 
@@ -150,7 +150,7 @@ Commands return `error` from Cobra `RunE`; `main` prints it and exits with code 
 
 ### Token precedence
 
-Effective token: explicit **`--token`**, else JSON **`token`** from **`--json`** merge, else **`POMA_API_TOKEN`** (applied in **`PersistentPreRun`** so **`--help` does not echo the env value**). For stable automation, that value should normally be the **`api_key`** from **`GET /me`**, not the short-lived token from **`verify-email`** alone. **Never** print full JWTs or **`api_key`** in agent logs or commit them to repos.
+Effective token: explicit **`--token`**, else JSON **`token`** from **`--json`** merge, else **`POMA_API_KEY`** (applied in **`PersistentPreRun`** so **`--help` does not echo the env value**). For stable automation, that value should normally be the **`api_key`** from **`GET /me`**, not the short-lived token from **`verify-email`** alone. **Never** print full JWTs or **`api_key`** in agent logs or commit them to repos.
 
 ### Credit / quota messaging
 

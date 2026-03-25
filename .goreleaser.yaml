@@ -71,7 +71,7 @@ brews:
     homepage: https://github.com/poma-ai/poma-cli
     description: CLI for the POMA AI API
     caveats: |
-      Authenticated commands need a JWT: export POMA_API_TOKEN or use --token / --json.
+      Authenticated commands need a JWT: export POMA_API_KEY or use --token / --json.
     post_install: |
       if OS.mac?
         system "/usr/bin/xattr", "-dr", "com.apple.quarantine", "#{bin}/poma"

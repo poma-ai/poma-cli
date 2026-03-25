@@ -55,7 +55,7 @@ Most API calls need a JWT (see [API key](#api-key) below). Export it or pass `--
 Example: ingest a file, wait until the job finishes, then download the result. Ingest is asynchronous, so you poll or stream status before downloading.
 
 ```bash
-# export POMA_API_TOKEN='<your-jwt>'
+# export POMA_API_KEY='<your-jwt>'
 
 # Ingest and download
 poma jobs ingest-sync --file document.pdf --output result.poma
@@ -80,7 +80,7 @@ poma jobs download --job-id <job_id> --output result.poma
 
 - `--base-url` — REST API base URL (default: `https://api.poma-ai.com/v2`)
 - `--status-base-url` — status / SSE base URL (default: `https://api.poma-ai.com/status/v1`)
-- `--token` or env `POMA_API_TOKEN` — JWT for authenticated requests
+- `--token` or env `POMA_API_KEY` — JWT for authenticated requests
 - `--json` *(optional)* — merge options from JSON: either an inline object (must start with `{`) or a path to a `.json` file **in the current working directory**. Keys are **snake_case** (e.g. `token`, `job_id`, `file`, `output`, `base_url`). Explicit flags **override** values from `--json`.
 
 ### API key
@@ -90,7 +90,7 @@ Register for free and try out our ingestion / chunking solution (1000 pages / 10
 **Via the web app**
 
 1. Sign up at [app.poma-ai.com](https://app.poma-ai.com).
-2. Copy your API key from the app and set `POMA_API_TOKEN`, or pass it with `--token`.
+2. Copy your API key from the app and set `POMA_API_KEY`, or pass it with `--token`.
 
 **Via the CLI**
 
@@ -100,10 +100,10 @@ poma account register-email --email you@example.com
 
 # 2. Complete verification with the code from email; the command prints a JWT you can use immediately
 poma account verify-email --email you@example.com --code 123456
-export POMA_API_TOKEN='<jwt-from-verify-output>'
+export POMA_API_KEY='<jwt-from-verify-output>'
 
 # 3. Optional: replace with the long-lived JWT from your account (requires jq)
-export POMA_API_TOKEN=$(poma account api-key | jq -r '.api_key')
+export POMA_API_KEY=$(poma account api-key | jq -r '.api_key')
 ```
 
 `poma account api-key` prints JSON with an `api_key` field (a JWT suitable for ongoing CLI use).
