@@ -4,3 +4,12 @@ dist/
 
 .DS_Store
 */.DS_Store
+CLAUDE.local.md
+events.jsonl
+.claude/hooks/
+.claude/rules/
+.claude/skills/
+.claude/agents/
+.claude/settings.json
+
+.agent/

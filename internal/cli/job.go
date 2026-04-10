@@ -10,17 +10,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// JobsCmd returns the jobs command.
-func JobsCmd() *cobra.Command {
+// JobCmd returns the job command.
+func JobCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "jobs",
-		Short: "Job ingestion, status, download, and delete",
+		Use:   "job",
+		Short: "Job ingest, status, result, download, and delete",
 	}
 	cmd.AddCommand(
 		ingestCmd(),
 		ingestSyncCmd(),
 		jobStatusCmd(),
 		jobStatusStreamCmd(),
+		jobResultCmd(),
 		jobDownloadCmd(),
 		jobDeleteCmd(),
 	)
@@ -35,7 +36,7 @@ func ingestCmd() *cobra.Command {
 		Aliases: []string{"ingest-data", "ingest-eco", "ingest-eco-data"},
 		Short:   "Ingest POST /ingest or /ingestEco — from a file path or from stdin / --data",
 		Long: "Either pass a path with --file / -f, or send the raw body with --filename / -n " +
-			"and --data or stdin (e.g. poma jobs ingest -n doc.pdf < doc.pdf). " +
+			"and --data or stdin (e.g. poma job ingest -n doc.pdf < doc.pdf). " +
 			"Use --eco or the ingest-eco / ingest-eco-data aliases for POST /ingestEco. " +
 			"Do not combine --file with --data. Binary payloads should use stdin, not --data.",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -117,20 +118,24 @@ func ingestSyncCmd() *cobra.Command {
 	var eco bool
 	cmd := &cobra.Command{
 		Use:   "ingest-sync",
-		Short: "Ingest (pro or eco), stream status until terminal, then download if done",
+		Short: "Ingest (pro or eco), stream status until terminal, then either receive json or download archive if done",
 		Long: "POST /ingest (default) or POST /ingestEco with --eco, then subscribe to the status SSE stream (same as status-stream), " +
 			"then GET /jobs/{job_id}/download when the job reaches done. " +
-			"Use --file / -f for a path, or --filename / -n with --data or stdin (same as jobs ingest). " +
+			"Use --file / -f for a path, or --filename / -n with --data or stdin (same as job ingest). " +
 			"Do not combine --file with --data. " +
+			"--output / -o to download the archive (default: {job_id}.poma) and print the path, otherwise receive json on stdout. " +
 			"If the terminal status is failed or deleted, exits non-zero. Each status event is printed as JSON on stdout.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := apiClient()
 			if cli.Token == "" {
 				return fmt.Errorf("token is required (--token or POMA_API_KEY)")
 			}
-			out := output
-			resolve := func(jobID string) (string, error) {
-				return resolveJobDownloadPath(jobID, out)
+			var resolve func(jobID string) (string, error)
+			if output != "" {
+				out := output
+				resolve = func(jobID string) (string, error) {
+					return resolveJobDownloadPath(jobID, out)
+				}
 			}
 			onStatus := func(s *client.JobStatus) {
 				b, _ := json.Marshal(s)
@@ -139,6 +144,25 @@ func ingestSyncCmd() *cobra.Command {
 			ctx := cmd.Context()
 			statusURL := statusBaseURLOrDefault()
 
+			finish := func(n int64, jobIDOrPath string, err error) error {
+				if err != nil {
+					return err
+				}
+				if output == "" {
+					body, status, err := cli.GetJobResult(jobIDOrPath)
+					if err != nil {
+						return err
+					}
+					if status != 200 {
+						return fmt.Errorf("HTTP %d: %s", status, string(body))
+					}
+					PrintJSON(body)
+					return nil
+				}
+				fmt.Printf("Downloaded %d bytes to %s\n", n, jobIDOrPath)
+				return nil
+			}
+
 			if file != "" {
 				if data != "" {
 					return fmt.Errorf("use either --file or --data, not both")
@@ -146,12 +170,8 @@ func ingestSyncCmd() *cobra.Command {
 				if err := client.ValidateIngestFilePath(file); err != nil {
 					return err
 				}
-				n, safeOut, err := cli.IngestSync(ctx, file, eco, statusURL, resolve, onStatus)
-				if err != nil {
-					return err
-				}
-				fmt.Printf("Downloaded %d bytes to %s\n", n, safeOut)
-				return nil
+				n, out, err := cli.IngestSync(ctx, file, eco, statusURL, resolve, onStatus)
+				return finish(n, out, err)
 			}
 
 			if filename == "" {
@@ -170,12 +190,8 @@ func ingestSyncCmd() *cobra.Command {
 			if len(payload) == 0 {
 				return fmt.Errorf("no ingest payload: set --data or pipe bytes to stdin")
 			}
-			n, safeOut, err := cli.IngestDataSync(ctx, payload, filename, eco, statusURL, resolve, onStatus)
-			if err != nil {
-				return err
-			}
-			fmt.Printf("Downloaded %d bytes to %s\n", n, safeOut)
-			return nil
+			n, out, err := cli.IngestDataSync(ctx, payload, filename, eco, statusURL, resolve, onStatus)
+			return finish(n, out, err)
 		},
 	}
 	cmd.Flags().StringVarP(&file, "file", "f", "", "Path to file to ingest (mutually exclusive with stdin/--data body mode)")
@@ -244,11 +260,40 @@ func jobStatusStreamCmd() *cobra.Command {
 	return cmd
 }
 
+func jobResultCmd() *cobra.Command {
+	var jobID string
+	cmd := &cobra.Command{
+		Use:   "result",
+		Short: "Get job result JSON GET /jobs/{job_id}/result",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := client.ValidateJobID(jobID); err != nil {
+				return err
+			}
+			cli := apiClient()
+			if cli.Token == "" {
+				return fmt.Errorf("token is required (--token or POMA_API_KEY)")
+			}
+			body, status, err := cli.GetJobResult(jobID)
+			if err != nil {
+				return err
+			}
+			if status != 200 {
+				return fmt.Errorf("HTTP %d: %s", status, string(body))
+			}
+			PrintJSON(body)
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&jobID, "job-id", "", "Job ID")
+	_ = cmd.MarkFlagRequired("job-id")
+	return cmd
+}
+
 func jobDownloadCmd() *cobra.Command {
 	var jobID, output string
 	cmd := &cobra.Command{
 		Use:   "download",
-		Short: "Download job result GET /jobs/{job_id}/download",
+		Short: "Download job archive to output.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := client.ValidateJobID(jobID); err != nil {
 				return err

@@ -35,7 +35,7 @@ Go + Cobra binary that wraps the public API: register/verify email, authenticate
 | Flag | Default | Notes |
 |------|---------|--------|
 | `--base-url` | `https://api.poma-ai.com/v2` | Must be `http` or `https` with a host. |
-| `--status-base-url` | `https://api.poma-ai.com/status/v1` | Used by `jobs status-stream` only. |
+| `--status-base-url` | `https://api.poma-ai.com/status/v1` | Used by `job status-stream` only. |
 | `--token` | `$POMA_API_KEY` | Required for authenticated routes. |
 | `--json` | (empty) | Inline JSON object (`{...}`) **or** path to a `.json` file under the process **CWD**; keys map to flags; explicit flags **override** JSON. |
 
@@ -97,21 +97,23 @@ Below, “agent” names are **logical groupings** for automation docs; each map
 
 ---
 
-### `jobs` — ingest, status, download, delete
+### `job` — ingest, status, download, delete
 
 | Command | API | Auth |
 |---------|-----|------|
-| `poma jobs ingest` | `POST /ingest` or `POST /ingestEco` (**`--eco`** or aliases **`ingest-eco`** / **`ingest-eco-data`**). Aliases: **`ingest-data`**, **`ingest-eco`**, **`ingest-eco-data`** | JWT |
-| `poma jobs ingest-sync` | `POST /ingest` or `POST /ingestEco` (**`--eco`**), then SSE until terminal; if `done`, `GET /jobs/{job_id}/download` | JWT |
-| `poma jobs status` | `GET /jobs/{job_id}/status` | JWT |
-| `poma jobs status-stream` | SSE `GET {status-base-url}/jobs/{job_id}` (`Accept: text/event-stream`) | JWT |
-| `poma jobs download` | `GET /jobs/{job_id}/download` | JWT |
-| `poma jobs delete` | `DELETE /jobs/{job_id}` | JWT |
+| `poma job ingest` | `POST /ingest` or `POST /ingestEco` (**`--eco`** or aliases **`ingest-eco`** / **`ingest-eco-data`**). Aliases: **`ingest-data`**, **`ingest-eco`**, **`ingest-eco-data`** | JWT |
+| `poma job ingest-sync` | `POST /ingest` or `POST /ingestEco` (**`--eco`**), then SSE until terminal; if `done` and **`--output`** set → `GET /jobs/{job_id}/download`; if `done` and no **`--output`** → `GET /jobs/{job_id}/results` (JSON to stdout) | JWT |
+| `poma job status` | `GET /jobs/{job_id}/status` | JWT |
+| `poma job status-stream` | SSE `GET {status-base-url}/jobs/{job_id}` (`Accept: text/event-stream`) | JWT |
+| `poma job result` | `GET /jobs/{job_id}/results` | JWT |
+| `poma job download` | `GET /jobs/{job_id}/download` | JWT |
+| `poma job delete` | `DELETE /jobs/{job_id}` | JWT |
 
 **Flags**
 
 - `ingest`: either **`--file` / `-f`** (path to file), or **`--filename` / `-n`** plus **`--data`** or stdin (do not use **`--file`** with **`--data`**); **`--eco`** for **`/ingestEco`**. Aliases **`ingest-eco`** / **`ingest-eco-data`** imply eco (same as **`--eco`**)
-- `ingest-sync`: same input modes as **`ingest`** — **`--file` / `-f`**, or **`--filename` / `-n`** plus **`--data`** or stdin (do not mix **`--file`** with **`--data`**); **`--eco`** (use **`/ingestEco`** instead of **`/ingest`**); **`--output` / `-o`** (optional; same default as **`download`**: `bin/{job_id}.poma` under CWD after safety check)
+- `ingest-sync`: same input modes as **`ingest`** — **`--file` / `-f`**, or **`--filename` / `-n`** plus **`--data`** or stdin (do not mix **`--file`** with **`--data`**); **`--eco`** (use **`/ingestEco`** instead of **`/ingest`**); **`--output` / `-o`** (optional; when set, downloads the archive to that path — default `bin/{job_id}.poma` under CWD after safety check; when omitted, fetches `GET /jobs/{job_id}/results` and prints JSON to stdout)
+- `result`: `--job-id` (required)
 - `status`, `status-stream`, `delete`: `--job-id` (required)
 - `download`: `--job-id` (required), `--output` / `-o` (optional; default `bin/{job_id}.poma` under CWD after safety check)
 
@@ -120,11 +122,12 @@ Below, “agent” names are **logical groupings** for automation docs; each map
 - **Ingest:** body is held in memory; same headers (`Content-Disposition` from file basename or **`--filename`**). **`--file`** or stdin/**`--data`** + **`--filename` / `-n`**. Eco mode: **`--eco`**, or invoke via alias **`ingest-eco`** / **`ingest-eco-data`** (`cmd.CalledAs()`). No MIME sniffing, no `X-Base-URL` header (use **`--base-url`**).
 - **Status:** single request; **no** built-in polling or interval — wrap in a shell loop if needed.
 - **Status-stream:** reads SSE until a terminal `job_status` (`done`, `failed`, `deleted`) or EOF/error; each event is printed as JSON.
-- **ingest-sync:** **`client.IngestSync`** (path) or **`client.IngestDataSync`** (stdin/**`--data`**) with **`isEco`** from **`--eco`** — ingest → SSE like **status-stream** (`cmd.Context()` for cancellation) → download on **`done`**. Prints each status event as JSON. Terminal **`done`** → download (same path rules as **download**); **`failed`** / **`deleted`** → error (includes `error` from status when present for **`failed`**). Does **not** print the standalone pretty `{"job_id":…}` line used by **ingest**.
+- **ingest-sync:** **`client.IngestSync`** (path) or **`client.IngestDataSync`** (stdin/**`--data`**) with **`isEco`** from **`--eco`** — ingest → SSE like **status-stream** (`cmd.Context()` for cancellation). Prints each status event as JSON. Terminal **`done`**: if **`--output`** is set → download the archive (same path rules as **download**) and print `Downloaded N bytes to <path>`; if **`--output`** is omitted → `GET /jobs/{job_id}/results` and print the JSON response to stdout. **`failed`** / **`deleted`** → error (includes `error` from status when present for **`failed`**). Does **not** print the standalone pretty `{"job_id":…}` line used by **ingest**.
+- **result:** single `GET /jobs/{job_id}/results`; prints JSON body on HTTP 200, error otherwise.
 - **Download:** response body is read fully then written to the resolved path; **no** `--force` (overwrites if the path already exists). **No** pre-check that status is `done` — API may return an error if not ready.
 - **Delete:** best-effort; prints a short confirmation on HTTP 200.
 
-On success, **`jobs ingest`** (and aliases **`ingest-data`**, **`ingest-eco`**, **`ingest-eco-data`**) print only pretty-printed JSON `{"job_id":"…"}` (normalized `job_id`); they do not echo the full API body.
+On success, **`job ingest`** (and aliases **`ingest-data`**, **`ingest-eco`**, **`ingest-eco-data`**) print only pretty-printed JSON `{"job_id":"…"}` (normalized `job_id`); they do not echo the full API body.
 
 ---
 

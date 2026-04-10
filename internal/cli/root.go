@@ -12,7 +12,7 @@ var (
 	baseURL       string
 	statusBaseURL string
 	token         string
-	jsonArg string
+	jsonArg       string
 )
 
 const (
@@ -55,7 +55,7 @@ func RootCmd() *cobra.Command {
 
 	cmd.AddCommand(
 		AccountCmd(),
-		JobsCmd(),
+		JobCmd(),
 		HealthCmd(),
 	)
 	return cmd

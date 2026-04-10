@@ -24,7 +24,7 @@ Short checklist for humans and **AI agents** working on this repository. For ful
 
 ## Extending the CLI (`internal/cli`)
 
-1. Add **`cobra.Command`** in the right file (`account.go`, `jobs.go`, …) or a new file if the group is large.
+1. Add **`cobra.Command`** in the right file (`account.go`, `job.go`, …) or a new file if the group is large.
 2. Register the command on the parent in the parent’s constructor (e.g. **`AccountCmd()`** → **`cmd.AddCommand(...)`**).
 3. Reuse **`apiClient()`** and **`PrintJSON`**; return errors from **`RunE`** (don’t **`os.Exit`** in commands).
 4. **Validate inputs** before calling the client:
@@ -48,7 +48,7 @@ Short checklist for humans and **AI agents** working on this repository. For ful
 
 | Change | Update |
 |--------|--------|
-| New or changed command / flag | **README.md** (if user-facing), **AGENTS.md** (command table + behavior) |
+| New or changed command / flag | **README.md** (if user-facing), **AGENTS.md** (command table + behavior, flags, behavior notes) |
 | Auth or token flow | **README.md**, **AGENTS.md** |
 | Agent-oriented guardrails | **AGENTS.md**, this file |
 

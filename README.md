@@ -52,27 +52,33 @@ go build -o poma .
 
 Most API calls need a JWT (see [API key](#api-key) below). Export it or pass `--token` on each command.
 
-Example: ingest a file, wait until the job finishes, then download the result. Ingest is asynchronous, so you poll or stream status before downloading.
+Example: ingest a file, wait until the job finishes, then retrieve the result. Ingest is asynchronous, so you poll or stream status before fetching results.
 
 ```bash
 # export POMA_API_KEY='<your-jwt>'
 
-# Ingest and download
-poma jobs ingest-sync --file document.pdf --output result.poma
-# poma jobs ingest-sync --filename document.pdf < document.pdf --output result.poma
+# Ingest and receive JSON result on stdout (no --output)
+poma job ingest-sync --file document.pdf
+# poma job ingest-sync --filename document.pdf < document.pdf
+
+# Ingest and download the archive instead
+poma job ingest-sync --file document.pdf --output result.poma
 
 ### Alternative: process each step manually
 
 # 1. Submit a file for processing; save the job_id from the output
-poma jobs ingest --file document.pdf
-# Or pipe bytes: poma jobs ingest --filename document.pdf < document.pdf
+poma job ingest --file document.pdf
+# Or pipe bytes: poma job ingest --filename document.pdf < document.pdf
 
 # 2. Wait until the job completes (or fails)
-poma jobs status-stream --job-id <job_id>
-# Or poll: poma jobs status --job-id <job_id>
+poma job status-stream --job-id <job_id>
+# Or poll: poma job status --job-id <job_id>
 
-# 3. When status is "done", fetch the artifact
-poma jobs download --job-id <job_id> --output result.poma
+# 3a. When status is "done", fetch the result JSON
+poma job result --job-id <job_id>
+
+# 3b. Or download the archive
+poma job download --job-id <job_id> --output result.poma
 
 ```
 
@@ -125,7 +131,7 @@ Standard Go layout with Cobra under `internal/cli` and a small HTTP client in `p
 │       ├── root.go         # Root command, global flags, --json hook
 │       ├── config.go       # JSON config shape and flag merge
 │       ├── account.go      # account subcommands (register, verify, me, …)
-│       ├── jobs.go         # jobs subcommands
+│       ├── job.go          # job subcommands
 │       ├── health.go       # health command
 │       └── util.go         # shared helpers (e.g. PrintJSON)
 └── pkg/

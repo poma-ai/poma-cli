@@ -155,8 +155,9 @@ func (c *Client) IngestSync(ctx context.Context, filePath string, isEco bool, st
 // IngestDataSync POSTs /ingest or /ingestEco with raw bytes, follows the status SSE stream until a
 // terminal job_status (done, failed, deleted), then downloads when status is done.
 // resolveOut returns a safe local path for DownloadJob; it is only called when the terminal status is done.
+// If resolveOut is nil, the download is skipped and (0, jobID, nil) is returned on done.
 // onStatus is optional; if set, it is invoked for each parsed job_status event.
-// On success with done, returns bytes written and the path passed to DownloadJob.
+// On success with done and resolveOut set, returns bytes written and the path passed to DownloadJob.
 func (c *Client) IngestDataSync(ctx context.Context, data []byte, filename string, isEco bool, statusBaseURL string, resolveOut func(jobID string) (outPath string, err error), onStatus func(*JobStatus)) (written int64, outPath string, retErr error) {
 	if c.Token == "" {
 		return 0, "", fmt.Errorf("token is required")
@@ -206,6 +207,9 @@ func (c *Client) IngestDataSync(ctx context.Context, data []byte, filename strin
 
 	switch last.Status {
 	case "done":
+		if resolveOut == nil {
+			return 0, jobID, nil
+		}
 		safeOut, err := resolveOut(jobID)
 		if err != nil {
 			return 0, "", err
@@ -297,6 +301,12 @@ func readSSEJobStatus(r io.Reader, onEvent func(*JobStatus) bool) error {
 		}
 	}
 	return scanner.Err()
+}
+
+// GetJobResult returns GET /jobs/{job_id}/results.
+func (c *Client) GetJobResult(jobID string) ([]byte, int, error) {
+	seg := JobPathSegment(jobID)
+	return c.Do(http.MethodGet, "/jobs/"+seg+"/results", nil, nil)
 }
 
 // DownloadJob writes GET /jobs/{job_id}/download to outPath. Returns written bytes and error.
