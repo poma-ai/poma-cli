@@ -7,12 +7,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Client calls the POMA API v2 (public OpenAPI).
@@ -27,7 +29,12 @@ func New(baseURL, token string) *Client {
 	return &Client{
 		BaseURL: baseURL,
 		Token:   token,
-		HTTP:    &http.Client{},
+		HTTP: &http.Client{
+			Transport: &http.Transport{
+				DialContext:         (&net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
+				TLSHandshakeTimeout: 10 * time.Second,
+			},
+		},
 	}
 }
 
@@ -170,13 +177,14 @@ func (c *Client) IngestDataSync(ctx context.Context, data []byte, filename strin
 	} else {
 		body, st, err = c.IngestData(data, filename)
 	}
-	PrintIngestJobIDOnly(body)
-
 	if err != nil {
 		return 0, "", err
 	}
 	if st != http.StatusCreated {
 		return 0, "", fmt.Errorf("ingest: HTTP %d: %s", st, string(body))
+	}
+	if err := PrintIngestJobIDOnly(body); err != nil {
+		return 0, "", err
 	}
 	j, err := ParseJob(body)
 	if err != nil {
@@ -296,7 +304,12 @@ func readSSEJobStatus(r io.Reader, onEvent func(*JobStatus) bool) error {
 			continue
 		}
 		if strings.HasPrefix(line, "data:") {
-			data = strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+			chunk := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+			if data == "" {
+				data = chunk
+			} else {
+				data = data + "\n" + chunk
+			}
 			continue
 		}
 	}
@@ -340,11 +353,6 @@ func (c *Client) DeleteJob(jobID string) ([]byte, int, error) {
 
 // GetMe returns GET /me.
 func (c *Client) GetMe() ([]byte, int, error) {
-	return c.Do(http.MethodGet, "/me", nil, nil)
-}
-
-// GetAccountsMe returns GET /me.
-func (c *Client) GetAccountsMe() ([]byte, int, error) {
 	return c.Do(http.MethodGet, "/me", nil, nil)
 }
 

@@ -179,12 +179,18 @@ func ValidateJobID(jobID string) error {
 	return ValidateResourceName(jobID, "--job-id")
 }
 
-// ValidateIngestFilePath rejects control characters in --file paths.
+// ValidateIngestFilePath rejects control characters in --file paths and checks the file is readable.
 func ValidateIngestFilePath(path string) error {
 	if path == "" {
 		return fmt.Errorf("--file is required")
 	}
-	return rejectControlChars(path, "--file")
+	if err := rejectControlChars(path, "--file"); err != nil {
+		return err
+	}
+	if _, err := os.Stat(path); err != nil {
+		return fmt.Errorf("--file: %w", err)
+	}
+	return nil
 }
 
 // ValidateUserStrings rejects C0 controls in user registration / verification fields.

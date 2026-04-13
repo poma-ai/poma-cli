@@ -41,8 +41,8 @@ func ingestCmd() *cobra.Command {
 			"Do not combine --file with --data. Binary payloads should use stdin, not --data.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := apiClient()
-			if cli.Token == "" {
-				return fmt.Errorf("token is required (--token or POMA_API_KEY)")
+			if err := requireToken(cli.Token); err != nil {
+				return err
 			}
 			isEco := eco
 			switch cmd.CalledAs() {
@@ -127,8 +127,8 @@ func ingestSyncCmd() *cobra.Command {
 			"If the terminal status is failed or deleted, exits non-zero. Each status event is printed as JSON on stdout.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := apiClient()
-			if cli.Token == "" {
-				return fmt.Errorf("token is required (--token or POMA_API_KEY)")
+			if err := requireToken(cli.Token); err != nil {
+				return err
 			}
 			var resolve func(jobID string) (string, error)
 			if output != "" {
@@ -212,8 +212,8 @@ func jobStatusCmd() *cobra.Command {
 				return err
 			}
 			cli := apiClient()
-			if cli.Token == "" {
-				return fmt.Errorf("token is required (--token or POMA_API_KEY)")
+			if err := requireToken(cli.Token); err != nil {
+				return err
 			}
 			body, status, err := cli.GetJobStatus(jobID)
 			if err != nil {
@@ -242,8 +242,8 @@ func jobStatusStreamCmd() *cobra.Command {
 				return err
 			}
 			cli := apiClient()
-			if cli.Token == "" {
-				return fmt.Errorf("token is required (--token or POMA_API_KEY)")
+			if err := requireToken(cli.Token); err != nil {
+				return err
 			}
 			if err := cli.StatusStream(cmd.Context(), jobID, statusBaseURLOrDefault(), func(s *client.JobStatus) bool {
 				data, _ := json.Marshal(s)
@@ -264,14 +264,14 @@ func jobResultCmd() *cobra.Command {
 	var jobID string
 	cmd := &cobra.Command{
 		Use:   "result",
-		Short: "Get job result JSON GET /jobs/{job_id}/result",
+		Short: "Get job result JSON GET /jobs/{job_id}/results",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := client.ValidateJobID(jobID); err != nil {
 				return err
 			}
 			cli := apiClient()
-			if cli.Token == "" {
-				return fmt.Errorf("token is required (--token or POMA_API_KEY)")
+			if err := requireToken(cli.Token); err != nil {
+				return err
 			}
 			body, status, err := cli.GetJobResult(jobID)
 			if err != nil {
@@ -299,19 +299,16 @@ func jobDownloadCmd() *cobra.Command {
 				return err
 			}
 			cli := apiClient()
-			if cli.Token == "" {
-				return fmt.Errorf("token is required (--token or POMA_API_KEY)")
+			if err := requireToken(cli.Token); err != nil {
+				return err
 			}
 			safeOut, err := resolveJobDownloadPath(jobID, output)
 			if err != nil {
 				return err
 			}
-			n, status, err := cli.DownloadJob(jobID, safeOut)
+			n, _, err := cli.DownloadJob(jobID, safeOut)
 			if err != nil {
 				return err
-			}
-			if status != 200 {
-				return fmt.Errorf("HTTP %d", status)
 			}
 			fmt.Printf("Downloaded %d bytes to %s\n", n, safeOut)
 			return nil
@@ -340,8 +337,8 @@ func jobDeleteCmd() *cobra.Command {
 				return err
 			}
 			cli := apiClient()
-			if cli.Token == "" {
-				return fmt.Errorf("token is required (--token or POMA_API_KEY)")
+			if err := requireToken(cli.Token); err != nil {
+				return err
 			}
 			body, status, err := cli.DeleteJob(jobID)
 			if err != nil {

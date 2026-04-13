@@ -126,11 +126,22 @@ func TestValidateIngestFilePath(t *testing.T) {
 	if err := ValidateIngestFilePath(""); err == nil || !strings.Contains(err.Error(), "required") {
 		t.Fatalf("got %v", err)
 	}
-	if err := ValidateIngestFilePath("/tmp/ok.pdf"); err != nil {
+
+	f, err := os.CreateTemp("", "ok*.pdf")
+	if err != nil {
 		t.Fatal(err)
 	}
+	f.Close()
+	defer os.Remove(f.Name())
+
+	if err := ValidateIngestFilePath(f.Name()); err != nil {
+		t.Fatal(err)
+	}
+	if err := ValidateIngestFilePath("/nonexistent/ok.pdf"); err == nil {
+		t.Fatal("expected error for missing file")
+	}
 	if err := ValidateIngestFilePath("/tmp/bad\x00.pdf"); err == nil {
-		t.Fatal("expected error")
+		t.Fatal("expected error for control char")
 	}
 }
 

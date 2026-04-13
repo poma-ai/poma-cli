@@ -87,8 +87,7 @@ func verifyEmailCmd() *cobra.Command {
 			}
 			var resp client.AccountRegisterEmailResponse
 			if err := json.Unmarshal(body, &resp); err != nil {
-				PrintJSON(body)
-				return nil
+				return fmt.Errorf("parse /verifyEmail: %w", err)
 			}
 			fmt.Println("Token:", resp.Token)
 			PrintJSON(body)
@@ -108,8 +107,8 @@ func meCmd() *cobra.Command {
 		Short: "Get current account GET /me",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := apiClient()
-			if cli.Token == "" {
-				return fmt.Errorf("token is required (--token or POMA_API_KEY)")
+			if err := requireToken(cli.Token); err != nil {
+				return err
 			}
 			body, status, err := cli.GetMe()
 			if err != nil {
@@ -132,10 +131,10 @@ func apiKeyCmd() *cobra.Command {
 		Short:   "Get long-lived API key GET /me (api_key only)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := apiClient()
-			if cli.Token == "" {
-				return fmt.Errorf("token is required (--token or POMA_API_KEY)")
+			if err := requireToken(cli.Token); err != nil {
+				return err
 			}
-			body, status, err := cli.GetAccountsMe()
+			body, status, err := cli.GetMe()
 			if err != nil {
 				return err
 			}
@@ -166,8 +165,8 @@ func myProjectsCmd() *cobra.Command {
 		Short: "List my projects GET /myProjects",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := apiClient()
-			if cli.Token == "" {
-				return fmt.Errorf("token is required (--token or POMA_API_KEY)")
+			if err := requireToken(cli.Token); err != nil {
+				return err
 			}
 			body, status, err := cli.GetMyProjects()
 			if err != nil {
@@ -189,8 +188,8 @@ func myUsageCmd() *cobra.Command {
 		Short: "Get my usage GET /myUsage",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := apiClient()
-			if cli.Token == "" {
-				return fmt.Errorf("token is required (--token or POMA_API_KEY)")
+			if err := requireToken(cli.Token); err != nil {
+				return err
 			}
 			body, status, err := cli.GetMyUsage()
 			if err != nil {
