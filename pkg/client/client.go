@@ -52,6 +52,8 @@ func (c *Client) Do(method, path string, body io.Reader, headers map[string]stri
 	if c.Token != "" && req.Header.Get("Authorization") == "" {
 		req.Header.Set("Authorization", "Bearer "+c.Token)
 	}
+	req.Header.Set("X-Request-Origin", "cli")
+
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
 		return nil, 0, err
@@ -67,7 +69,7 @@ func (c *Client) Do(method, path string, body io.Reader, headers map[string]stri
 // DoJSON sends a JSON request and returns body and status. If body is nil, Content-Type is not set for GET.
 func (c *Client) DoJSON(method, path string, reqBody any) ([]byte, int, error) {
 	var body io.Reader
-	headers := map[string]string{}
+	headers := map[string]string{"X-Request-Origin": "cli"}
 	if reqBody != nil {
 		b, err := json.Marshal(reqBody)
 		if err != nil {
