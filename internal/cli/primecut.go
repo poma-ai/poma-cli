@@ -9,20 +9,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// DocCmd returns the job command.
-func DocCmd() *cobra.Command {
+// PrimeCutCmd returns the primecut command.
+func PrimeCutCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "doc",
-		Short: "Doc ingest, and ingest-sync",
+		Use:   "primecut",
+		Short: "PrimeCut ingest, and ingest-sync",
 	}
 	cmd.AddCommand(
-		ingestCmd(),
-		ingestSyncCmd(),
+		primecutIngestCmd(),
+		primecutIngestSyncCmd(),
 	)
 	return cmd
 }
 
-func ingestCmd() *cobra.Command {
+func primecutIngestCmd() *cobra.Command {
 	var file, data, filename string
 	var eco bool
 	cmd := &cobra.Command{
@@ -107,7 +107,7 @@ func ingestCmd() *cobra.Command {
 	return cmd
 }
 
-func ingestSyncCmd() *cobra.Command {
+func primecutIngestSyncCmd() *cobra.Command {
 	var file, data, filename, output string
 	var eco bool
 	cmd := &cobra.Command{

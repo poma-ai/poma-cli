@@ -58,17 +58,17 @@ Example: ingest a file, wait until the job finishes, then retrieve the result. I
 # export POMA_API_KEY='<your-jwt>'
 
 # Ingest and receive JSON result on stdout (no --output)
-poma job ingest-sync --file document.pdf
-# poma job ingest-sync --filename document.pdf < document.pdf
+poma primecut ingest-sync --file document.pdf
+# poma primecut ingest-sync --filename document.pdf < document.pdf
 
 # Ingest and download the archive instead
-poma job ingest-sync --file document.pdf --output result.poma
+poma primecut ingest-sync --file document.pdf --output result.poma
 
 ### Alternative: process each step manually
 
 # 1. Submit a file for processing; save the job_id from the output
-poma job ingest --file document.pdf
-# Or pipe bytes: poma job ingest --filename document.pdf < document.pdf
+poma primecut ingest --file document.pdf
+# Or pipe bytes: poma primecut ingest --filename document.pdf < document.pdf
 
 # 2. Wait until the job completes (or fails)
 poma job status-stream --job-id <job_id>
@@ -131,7 +131,8 @@ Standard Go layout with Cobra under `internal/cli` and a small HTTP client in `p
 │       ├── root.go         # Root command, global flags, --json hook
 │       ├── config.go       # JSON config shape and flag merge
 │       ├── account.go      # account subcommands (register, verify, me, …)
-│       ├── job.go          # job subcommands
+│       ├── primecut.go     # primecut ingest / ingest-sync
+│       ├── job.go          # job status, result, download, delete
 │       ├── health.go       # health command
 │       └── util.go         # shared helpers (e.g. PrintJSON)
 └── pkg/

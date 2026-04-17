@@ -24,7 +24,7 @@ Short checklist for humans and **AI agents** working on this repository. For ful
 
 ## Extending the CLI (`internal/cli`)
 
-1. Add **`cobra.Command`** in the right file (`account.go`, `job.go`, …) or a new file if the group is large.
+1. Add **`cobra.Command`** in the right file (`account.go`, `primecut.go`, `job.go`, …) or a new file if the group is large.
 2. Register the command on the parent in the parent’s constructor (e.g. **`AccountCmd()`** → **`cmd.AddCommand(...)`**).
 3. Reuse **`apiClient()`** and **`PrintJSON`**; return errors from **`RunE`** (don’t **`os.Exit`** in commands).
 4. **Validate inputs** before calling the client:
@@ -62,5 +62,7 @@ Short checklist for humans and **AI agents** working on this repository. For ful
 | `internal/cli/root.go` | Root command, persistent flags, **`--json`** merge hook |
 | `pkg/client/safety.go` | Input validation, `FileConfig` for `--json` |
 | `internal/cli/config.go` | JSON config shape and merge into flags |
+| `internal/cli/job.go` | Job lifecycle commands (status, download, …) |
+| `internal/cli/primecut.go` | PrimeCut **`ingest`** / **`ingest-sync`** commands |
 | `pkg/client/client.go` | HTTP transport and endpoint methods |
 | `pkg/client/pathseg.go` | URL path segment encoding |
