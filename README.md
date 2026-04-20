@@ -84,7 +84,7 @@ poma job download --job-id <job_id> --output result.poma
 
 **Global flags** (apply to all subcommands):
 
-- `--base-url` — REST API base URL (default: `https://api.poma-ai.com/v2`)
+- `--base-url` — REST API base URL (default: `https://api.poma-ai.com/v3`)
 - `--status-base-url` — status / SSE base URL (default: `https://api.poma-ai.com/status/v1`)
 - `--token` or env `POMA_API_KEY` — JWT for authenticated requests
 - `--json` *(optional)* — merge options from JSON: either an inline object (must start with `{`) or a path to a `.json` file **in the current working directory**. Keys are **snake_case** (e.g. `token`, `job_id`, `file`, `output`, `base_url`). Explicit flags **override** values from `--json`.

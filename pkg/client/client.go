@@ -17,7 +17,7 @@ import (
 	"time"
 )
 
-// Client calls the POMA API v2 (public OpenAPI).
+// Client calls the POMA API v3 (public OpenAPI).
 type Client struct {
 	BaseURL string
 	Token   string

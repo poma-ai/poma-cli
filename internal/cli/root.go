@@ -16,7 +16,7 @@ var (
 )
 
 const (
-	defaultApiBaseURL    = "https://api.poma-ai.com/v2"
+	defaultApiBaseURL    = "https://api.poma-ai.com/v3"
 	defaultStatusBaseURL = "https://api.poma-ai.com/status/v1"
 )
 
@@ -24,7 +24,7 @@ const (
 func RootCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "poma",
-		Short: "POMA AI API v2 CLI",
+		Short: "POMA AI API v3 CLI",
 		Long: "CLI for the POMA AI public API. Use --base-url and --token or POMA_API_KEY.\n" +
 			"Optional --json accepts inline JSON or a path to a JSON file; flag values override the file/JSON.\n\n" +
 			"Top-level commands: account, jobs, health. Subcommands (e.g. account register-email, account api-key, jobs ingest) are listed under each: poma <cmd> --help.",

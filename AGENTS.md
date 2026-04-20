@@ -1,6 +1,6 @@
 # Agents
 
-This document describes the **implemented** POMA CLI (`poma`): responsibilities, API usage, and constraints. The CLI talks to the [Poma AI REST API](https://api.poma-ai.com/v2) for ingestion, job lifecycle, and downloading POMA archives.
+This document describes the **implemented** POMA CLI (`poma`): responsibilities, API usage, and constraints. The CLI talks to the [Poma AI REST API](https://api.poma-ai.com/v3) for ingestion, job lifecycle, and downloading POMA archives.
 
 **This CLI is frequently invoked by AI/LLM agents. Always assume inputs can be adversarial** — see [Input safety](#input-safety) and `pkg/client/safety.go`.
 
@@ -34,7 +34,7 @@ Go + Cobra binary that wraps the public API: register/verify email, authenticate
 
 | Flag | Default | Notes |
 |------|---------|--------|
-| `--base-url` | `https://api.poma-ai.com/v2` | Must be `http` or `https` with a host. |
+| `--base-url` | `https://api.poma-ai.com/v3` | Must be `http` or `https` with a host. |
 | `--status-base-url` | `https://api.poma-ai.com/status/v1` | Used by `job status-stream` and `primecut ingest-sync`. |
 | `--token` | `$POMA_API_KEY` | Required for authenticated routes. |
 | `--json` | (empty) | Inline JSON object (`{...}`) **or** path to a `.json` file under the process **CWD**; keys map to flags; explicit flags **override** JSON. |

@@ -87,7 +87,7 @@ func TestValidateHTTPOrigin(t *testing.T) {
 		wantErr string
 	}{
 		{"empty", "", ""},
-		{"https_ok", "https://api.example.com/v2", ""},
+		{"https_ok", "https://api.example.com/v3", ""},
 		{"http_ok", "http://localhost:8080", ""},
 		{"no_scheme", "api.example.com", "scheme"},
 		{"bad_scheme", "ftp://x.com", "scheme"},
