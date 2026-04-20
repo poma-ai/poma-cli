@@ -34,3 +34,40 @@ type JobStatus struct {
 	Status string `json:"status"`
 	Error  string `json:"error,omitempty"`
 }
+
+// Orga is the response schema for organisation endpoints.
+type Orga struct {
+	OrgaID    string `json:"orga_id"`
+	Name      string `json:"name"`
+	CreatedAt string `json:"created_at,omitempty"`
+	UpdatedAt string `json:"updated_at,omitempty"`
+}
+
+// OrgaMember is the response schema for organisation member endpoints.
+type OrgaMember struct {
+	OrgaID    string `json:"orga_id"`
+	AccountID string `json:"account_id"`
+	Role      string `json:"role"`
+	CreatedAt string `json:"created_at,omitempty"`
+}
+
+// CreateOrgaRequest is the request body for POST /orgas.
+type CreateOrgaRequest struct {
+	Name string `json:"name"`
+}
+
+// UpdateOrgaRequest is the request body for PUT /orgas/{orgaId}.
+type UpdateOrgaRequest struct {
+	Name string `json:"name"`
+}
+
+// AddOrgaMemberRequest is the request body for POST /orgas/{orgaId}/members.
+type AddOrgaMemberRequest struct {
+	AccountID string `json:"account_id"`
+	Role      string `json:"role"`
+}
+
+// UpdateOrgaMemberRoleRequest is the request body for PUT /orgas/{orgaId}/members/{accountId}.
+type UpdateOrgaMemberRoleRequest struct {
+	Role string `json:"role"`
+}

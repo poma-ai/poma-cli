@@ -373,6 +373,61 @@ func (c *Client) Health() ([]byte, int, error) {
 	return c.Do(http.MethodGet, "/health", nil, nil)
 }
 
+// CreateOrga calls POST /orgas.
+func (c *Client) CreateOrga(req *CreateOrgaRequest) ([]byte, int, error) {
+	return c.DoJSON(http.MethodPost, "/orgas", req)
+}
+
+// GetOrga calls GET /orgas/{orgaId}.
+func (c *Client) GetOrga(orgaID string) ([]byte, int, error) {
+	seg := JobPathSegment(orgaID)
+	return c.Do(http.MethodGet, "/orgas/"+seg, nil, nil)
+}
+
+// UpdateOrga calls PUT /orgas/{orgaId}.
+func (c *Client) UpdateOrga(orgaID string, req *UpdateOrgaRequest) ([]byte, int, error) {
+	seg := JobPathSegment(orgaID)
+	return c.DoJSON(http.MethodPut, "/orgas/"+seg, req)
+}
+
+// DeleteOrga calls DELETE /orgas/{orgaId}.
+func (c *Client) DeleteOrga(orgaID string) ([]byte, int, error) {
+	seg := JobPathSegment(orgaID)
+	return c.Do(http.MethodDelete, "/orgas/"+seg, nil, nil)
+}
+
+// GetOrgaMembers calls GET /orgas/{orgaId}/members.
+func (c *Client) GetOrgaMembers(orgaID string) ([]byte, int, error) {
+	seg := JobPathSegment(orgaID)
+	return c.Do(http.MethodGet, "/orgas/"+seg+"/members", nil, nil)
+}
+
+// AddOrgaMember calls POST /orgas/{orgaId}/members.
+func (c *Client) AddOrgaMember(orgaID string, req *AddOrgaMemberRequest) ([]byte, int, error) {
+	seg := JobPathSegment(orgaID)
+	return c.DoJSON(http.MethodPost, "/orgas/"+seg+"/members", req)
+}
+
+// UpdateOrgaMemberRole calls PUT /orgas/{orgaId}/members/{accountId}.
+func (c *Client) UpdateOrgaMemberRole(orgaID, accountID string, req *UpdateOrgaMemberRoleRequest) ([]byte, int, error) {
+	orgaSeg := JobPathSegment(orgaID)
+	accountSeg := JobPathSegment(accountID)
+	return c.DoJSON(http.MethodPut, "/orgas/"+orgaSeg+"/members/"+accountSeg, req)
+}
+
+// RemoveOrgaMember calls DELETE /orgas/{orgaId}/members/{accountId}.
+func (c *Client) RemoveOrgaMember(orgaID, accountID string) ([]byte, int, error) {
+	orgaSeg := JobPathSegment(orgaID)
+	accountSeg := JobPathSegment(accountID)
+	return c.Do(http.MethodDelete, "/orgas/"+orgaSeg+"/members/"+accountSeg, nil, nil)
+}
+
+// GetOrgaProjects calls GET /orgas/{orgaId}/projects.
+func (c *Client) GetOrgaProjects(orgaID string) ([]byte, int, error) {
+	seg := JobPathSegment(orgaID)
+	return c.Do(http.MethodGet, "/orgas/"+seg+"/projects", nil, nil)
+}
+
 // PomaArchiveName returns the default filename for a job's POMA archive download.
 func PomaArchiveName(jobID string) string {
 	return jobID + ".poma"
