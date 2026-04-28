@@ -7,8 +7,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -111,8 +113,11 @@ func (c *Client) IngestData(data []byte, filename string) ([]byte, int, error) {
 		return nil, 0, fmt.Errorf("ingest body is empty")
 	}
 	name := sanitizeContentDispositionFilename(filepath.Base(filename))
+	contentDisposition := mime.FormatMediaType("attachment", map[string]string{
+		"filename": name,
+	})
 	headers := map[string]string{
-		"Content-Disposition": `attachment; filename="` + name + `"`,
+		"Content-Disposition": contentDisposition,
 		"Content-Type":        "application/octet-stream",
 		"Content-Length":      strconv.Itoa(len(data)),
 	}
@@ -140,7 +145,7 @@ func (c *Client) IngestEcoData(data []byte, filename string) ([]byte, int, error
 	}
 	name := sanitizeContentDispositionFilename(filepath.Base(filename))
 	headers := map[string]string{
-		"Content-Disposition": `attachment; filename="` + name + `"`,
+		"Content-Disposition": `attachment; filename*=UTF-8''` + encodeContentDispositionFilename(name),
 		"Content-Type":        "application/octet-stream",
 		"Content-Length":      strconv.Itoa(len(data)),
 	}
@@ -463,6 +468,10 @@ func sanitizeContentDispositionFilename(name string) string {
 		return "upload" + ext
 	}
 	return name
+}
+
+func encodeContentDispositionFilename(name string) string {
+	return url.PathEscape(name)
 }
 
 // printIngestJobIDOnly writes pretty-printed {"job_id":"..."} to stdout (normalized via ParseJob).
