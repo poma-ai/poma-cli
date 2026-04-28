@@ -18,7 +18,7 @@ func AccountCmd() *cobra.Command {
 		registerEmailCmd(),
 		verifyEmailCmd(),
 		meCmd(),
-		apiKeyCmd(),
+		generateApiKeyCmd(),
 		myProjectsCmd(),
 		myUsageCmd(),
 	)
@@ -124,35 +124,23 @@ func meCmd() *cobra.Command {
 	return cmd
 }
 
-func apiKeyCmd() *cobra.Command {
+func generateApiKeyCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "api-key",
-		Aliases: []string{"apikey"},
-		Short:   "Get long-lived API key GET /me (api_key only)",
+		Use:   "generate-api-key",
+		Short: "Generate (or rotate) account API key (POST /generateApiKey)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := apiClient()
 			if err := requireToken(cli.Token); err != nil {
 				return err
 			}
-			body, status, err := cli.GetMe()
+			body, status, err := cli.GenerateApiKey()
 			if err != nil {
 				return err
 			}
 			if status != 200 {
 				return fmt.Errorf("HTTP %d: %s", status, string(body))
 			}
-			var parsed client.AccountAPIKeyBody
-			if err := json.Unmarshal(body, &parsed); err != nil {
-				return fmt.Errorf("parse /me: %w", err)
-			}
-			if parsed.APIKey == "" {
-				return fmt.Errorf("response has no api_key")
-			}
-			raw, err := json.Marshal(map[string]string{"api_key": parsed.APIKey})
-			if err != nil {
-				return err
-			}
-			PrintJSON(raw)
+			PrintJSON(body)
 			return nil
 		},
 	}

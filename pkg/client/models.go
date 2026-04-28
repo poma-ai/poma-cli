@@ -18,8 +18,8 @@ type AccountVerifyEmailRequest struct {
 	Code  string `json:"code"`
 }
 
-// AccountAPIKeyBody parses GET /me; other JSON fields are ignored.
-type AccountAPIKeyBody struct {
+// AccountApiKeyResponse is the response from POST /generateApiKey.
+type AccountApiKeyResponse struct {
 	APIKey string `json:"api_key"`
 }
 

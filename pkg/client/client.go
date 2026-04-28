@@ -350,6 +350,11 @@ func (c *Client) GetMe() ([]byte, int, error) {
 	return c.Do(http.MethodGet, "/me", nil, nil)
 }
 
+// GenerateApiKey calls POST /generateApiKey, rotating or creating an opaque API key.
+func (c *Client) GenerateApiKey() ([]byte, int, error) {
+	return c.DoJSON(http.MethodPost, "/generateApiKey", nil)
+}
+
 // GetMyProjects returns GET /myProjects.
 func (c *Client) GetMyProjects() ([]byte, int, error) {
 	return c.Do(http.MethodGet, "/myProjects", nil, nil)

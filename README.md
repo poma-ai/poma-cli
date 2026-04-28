@@ -108,38 +108,9 @@ poma account register-email --email you@example.com
 poma account verify-email --email you@example.com --code 123456
 export POMA_API_KEY='<jwt-from-verify-output>'
 
-# 3. Optional: replace with the long-lived JWT from your account (requires jq)
-export POMA_API_KEY=$(poma account api-key | jq -r '.api_key')
+# 3. Generate a long-lived opaque API key (recommended for ongoing use)
+export POMA_API_KEY=$(poma account generate-api-key | jq -r '.api_key')
 ```
 
-`poma account api-key` prints JSON with an `api_key` field (a JWT suitable for ongoing CLI use).
-
-## Project structure
-
-Standard Go layout with Cobra under `internal/cli` and a small HTTP client in `pkg/client`:
-
-```
-.
-├── main.go                 # Entry point (thin)
-├── go.mod
-├── go.sum
-├── README.md
-├── AGENTS.md               # Full CLI/API reference for agents
-├── SKILL.md                # Short agent/dev checklist
-├── internal/
-│   └── cli/                # Cobra commands
-│       ├── root.go         # Root command, global flags, --json hook
-│       ├── config.go       # JSON config shape and flag merge
-│       ├── account.go      # account subcommands (register, verify, me, …)
-│       ├── primecut.go     # primecut ingest / ingest-sync
-│       ├── job.go          # job status, result, download, delete
-│       ├── health.go       # health command
-│       └── util.go         # shared helpers (e.g. PrintJSON)
-└── pkg/
-    └── client/             # HTTP API client
-        ├── client.go
-        ├── models.go       # Request/response types
-        ├── pathseg.go      # URL path-segment encoding
-        └── safety.go       # Input validation, FileConfig (--json shape)
-```
+`poma account generate-api-key` calls `POST /generateApiKey` and prints `{"api_key":"…"}`. Use this key as `POMA_API_KEY` for all subsequent sessions — it is longer-lived and more suitable for automation than the short-lived verify token.
 
