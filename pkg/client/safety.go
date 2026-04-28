@@ -84,6 +84,31 @@ func ValidateSafeOutputDir(outPath string) (string, error) {
 	return target, nil
 }
 
+// ValidateInputFilePath resolves a filesystem path for --input and ensures it stays under CWD.
+func ValidateInputFilePath(path string) (string, error) {
+	if err := rejectControlChars(path, "--input file path"); err != nil {
+		return "", err
+	}
+	wdAbs, err := absCanonicalWD()
+	if err != nil {
+		return "", err
+	}
+	var target string
+	if filepath.IsAbs(path) {
+		target = filepath.Clean(path)
+	} else {
+		target = filepath.Clean(filepath.Join(wdAbs, path))
+	}
+	rel, err := filepath.Rel(wdAbs, target)
+	if err != nil {
+		return "", fmt.Errorf("--input file path: %w", err)
+	}
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("--input file path escapes working directory")
+	}
+	return target, nil
+}
+
 // ValidateJSONFilePathUnderCwd resolves a filesystem path for --json and ensures it stays under CWD.
 func ValidateJSONFilePathUnderCwd(path string) (string, error) {
 	if err := rejectControlChars(path, "--json file path"); err != nil {
