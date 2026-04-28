@@ -112,16 +112,8 @@ func (c *Client) IngestData(data []byte, filename string) ([]byte, int, error) {
 	if len(data) == 0 {
 		return nil, 0, fmt.Errorf("ingest body is empty")
 	}
-	name := sanitizeContentDispositionFilename(filepath.Base(filename))
-	contentDisposition := mime.FormatMediaType("attachment", map[string]string{
-		"filename": name,
-	})
-	headers := map[string]string{
-		"Content-Disposition": contentDisposition,
-		"Content-Type":        "application/octet-stream",
-		"Content-Length":      strconv.Itoa(len(data)),
-	}
-	return c.Do(http.MethodPost, "/ingest", bytes.NewReader(data), headers)
+	headers := BuildIngestHeaders(filename, len(data))
+	return c.Do(http.MethodPost, "/primeCut/ingest", bytes.NewReader(data), headers)
 }
 
 // IngestEco sends POST /ingestEco with raw file body (eco).
@@ -143,13 +135,8 @@ func (c *Client) IngestEcoData(data []byte, filename string) ([]byte, int, error
 	if len(data) == 0 {
 		return nil, 0, fmt.Errorf("ingest body is empty")
 	}
-	name := sanitizeContentDispositionFilename(filepath.Base(filename))
-	headers := map[string]string{
-		"Content-Disposition": `attachment; filename*=UTF-8''` + encodeContentDispositionFilename(name),
-		"Content-Type":        "application/octet-stream",
-		"Content-Length":      strconv.Itoa(len(data)),
-	}
-	return c.Do(http.MethodPost, "/ingestEco", bytes.NewReader(data), headers)
+	headers := BuildIngestHeaders(filename, len(data))
+	return c.Do(http.MethodPost, "/primeCutEco/ingest", bytes.NewReader(data), headers)
 }
 
 // IngestSync reads the file into memory, then calls IngestDataSync.
@@ -401,6 +388,25 @@ func (c *Client) DeleteOrga(orgaID string) ([]byte, int, error) {
 	return c.Do(http.MethodDelete, "/orgas/"+seg, nil, nil)
 }
 
+// ListOrgas calls GET /orgas with optional name filter and pagination.
+func (c *Client) ListOrgas(name string, page, pageSize int) ([]byte, int, error) {
+	q := url.Values{}
+	if name != "" {
+		q.Set("name", name)
+	}
+	if page > 0 {
+		q.Set("page", strconv.Itoa(page))
+	}
+	if pageSize > 0 {
+		q.Set("page_size", strconv.Itoa(pageSize))
+	}
+	p := "/orgas"
+	if len(q) > 0 {
+		p += "?" + q.Encode()
+	}
+	return c.Do(http.MethodGet, p, nil, nil)
+}
+
 // GetOrgaMembers calls GET /orgas/{orgaId}/members.
 func (c *Client) GetOrgaMembers(orgaID string) ([]byte, int, error) {
 	seg := JobPathSegment(orgaID)
@@ -411,13 +417,6 @@ func (c *Client) GetOrgaMembers(orgaID string) ([]byte, int, error) {
 func (c *Client) AddOrgaMember(orgaID string, req *AddOrgaMemberRequest) ([]byte, int, error) {
 	seg := JobPathSegment(orgaID)
 	return c.DoJSON(http.MethodPost, "/orgas/"+seg+"/members", req)
-}
-
-// UpdateOrgaMemberRole calls PUT /orgas/{orgaId}/members/{accountId}.
-func (c *Client) UpdateOrgaMemberRole(orgaID, accountID string, req *UpdateOrgaMemberRoleRequest) ([]byte, int, error) {
-	orgaSeg := JobPathSegment(orgaID)
-	accountSeg := JobPathSegment(accountID)
-	return c.DoJSON(http.MethodPut, "/orgas/"+orgaSeg+"/members/"+accountSeg, req)
 }
 
 // RemoveOrgaMember calls DELETE /orgas/{orgaId}/members/{accountId}.
@@ -431,6 +430,78 @@ func (c *Client) RemoveOrgaMember(orgaID, accountID string) ([]byte, int, error)
 func (c *Client) GetOrgaProjects(orgaID string) ([]byte, int, error) {
 	seg := JobPathSegment(orgaID)
 	return c.Do(http.MethodGet, "/orgas/"+seg+"/projects", nil, nil)
+}
+
+// CreateProject calls POST /projects.
+func (c *Client) CreateProject(req *CreateProjectRequest) ([]byte, int, error) {
+	return c.DoJSON(http.MethodPost, "/projects", req)
+}
+
+// ListProjects calls GET /projects.
+func (c *Client) ListProjects() ([]byte, int, error) {
+	return c.Do(http.MethodGet, "/projects", nil, nil)
+}
+
+// SearchProjects calls GET /projects/search with a JSON request body.
+func (c *Client) SearchProjects(req *ProjectSearchOptions) ([]byte, int, error) {
+	return c.DoJSON(http.MethodGet, "/projects/search", req)
+}
+
+// GetProject calls GET /projects/{projectId}.
+func (c *Client) GetProject(projectID string) ([]byte, int, error) {
+	seg := JobPathSegment(projectID)
+	return c.Do(http.MethodGet, "/projects/"+seg, nil, nil)
+}
+
+// DeleteProject calls DELETE /projects/{projectId}.
+func (c *Client) DeleteProject(projectID string) ([]byte, int, error) {
+	seg := JobPathSegment(projectID)
+	return c.Do(http.MethodDelete, "/projects/"+seg, nil, nil)
+}
+
+// CreateOrgaInvitation calls POST /orgas/{orgaId}/invitations.
+func (c *Client) CreateOrgaInvitation(orgaID string, req *CreateOrgaInvitationRequest) ([]byte, int, error) {
+	seg := JobPathSegment(orgaID)
+	return c.DoJSON(http.MethodPost, "/orgas/"+seg+"/invitations", req)
+}
+
+// ListOrgaInvitations calls GET /orgas/{orgaId}/invitations with optional status filter and pagination.
+func (c *Client) ListOrgaInvitations(orgaID, status string, page, pageSize int) ([]byte, int, error) {
+	seg := JobPathSegment(orgaID)
+	q := url.Values{}
+	if status != "" {
+		q.Set("status", status)
+	}
+	if page > 0 {
+		q.Set("page", strconv.Itoa(page))
+	}
+	if pageSize > 0 {
+		q.Set("page_size", strconv.Itoa(pageSize))
+	}
+	p := "/orgas/" + seg + "/invitations"
+	if len(q) > 0 {
+		p += "?" + q.Encode()
+	}
+	return c.Do(http.MethodGet, p, nil, nil)
+}
+
+// CancelOrgaInvitation calls DELETE /orgas/{orgaId}/invitations/{invitationId}.
+func (c *Client) CancelOrgaInvitation(orgaID string, invitationID int64) ([]byte, int, error) {
+	seg := JobPathSegment(orgaID)
+	return c.Do(http.MethodDelete, "/orgas/"+seg+"/invitations/"+strconv.FormatInt(invitationID, 10), nil, nil)
+}
+
+// ResendOrgaInvitation calls POST /orgas/{orgaId}/invitations/{invitationId}/resend.
+func (c *Client) ResendOrgaInvitation(orgaID string, invitationID int64) ([]byte, int, error) {
+	seg := JobPathSegment(orgaID)
+	return c.DoJSON(http.MethodPost, "/orgas/"+seg+"/invitations/"+strconv.FormatInt(invitationID, 10)+"/resend", nil)
+}
+
+// AcceptOrgaInvitation calls GET /invitations/accept?token=... (no auth required).
+func (c *Client) AcceptOrgaInvitation(token string) ([]byte, int, error) {
+	q := url.Values{}
+	q.Set("token", token)
+	return c.Do(http.MethodGet, "/invitations/accept?"+q.Encode(), nil, nil)
 }
 
 // PomaArchiveName returns the default filename for a job's POMA archive download.
@@ -470,8 +541,16 @@ func sanitizeContentDispositionFilename(name string) string {
 	return name
 }
 
-func encodeContentDispositionFilename(name string) string {
-	return url.PathEscape(name)
+func BuildIngestHeaders(filename string, contentSize int) map[string]string {
+	name := sanitizeContentDispositionFilename(filepath.Base(filename))
+	contentDisposition := mime.FormatMediaType("attachment", map[string]string{
+		"filename": name,
+	})
+	return map[string]string{
+		"Content-Disposition": contentDisposition,
+		"Content-Type":        "application/octet-stream",
+		"Content-Length":      strconv.Itoa(contentSize),
+	}
 }
 
 // printIngestJobIDOnly writes pretty-printed {"job_id":"..."} to stdout (normalized via ParseJob).

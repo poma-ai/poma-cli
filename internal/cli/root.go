@@ -58,6 +58,7 @@ func RootCmd() *cobra.Command {
 		JobCmd(),
 		PrimeCutCmd(),
 		OrgaCmd(),
+		ProjectCmd(),
 		HealthCmd(),
 	)
 	return cmd
