@@ -89,7 +89,6 @@ func verifyEmailCmd() *cobra.Command {
 			if err := json.Unmarshal(body, &resp); err != nil {
 				return fmt.Errorf("parse /verifyEmail: %w", err)
 			}
-			fmt.Println("Token:", resp.Token)
 			PrintJSON(body)
 			return nil
 		},
